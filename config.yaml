@@ -1,0 +1,7 @@
+output_dir: output # Output folder (default)
+input_dir: input # Input folder (default)
+mapq: 0 # Set to positive value to filter out lower mapq scores
+blacklist: null # Set to path of blacklist file to blacklist by midpoints
+compress: False # Set to True to save refined product as a .gz
+
+# Will add all the finaletoolkit params...
