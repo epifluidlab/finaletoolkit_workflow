@@ -87,7 +87,7 @@ if BLACKLIST:
         blacklist_output_tbi_path = blacklist_output_gz_path + ".tbi"
         if not os.path.exists(blacklist_output_gz_path):
             print(blacklist_input_path,blacklist_output_gz_path)
-            shell(f"bgzip -c {blacklist_input_path} > {blacklist_output_gz_path}")
+            shell(f"bgzip -@ 4 -c {blacklist_input_path} > {blacklist_output_gz_path}")
         if not os.path.exists(blacklist_output_tbi_path):
             shell(f"tabix -p bed '{blacklist_output_gz_path}'")
     BLACKLIST = blacklist_output_gz_path
@@ -100,9 +100,10 @@ rule filter_bed_mapq:
     output:
         bed=os.path.join(OUTPUT_DIR, "{sample}.filtered.bed.gz"),
         tbi=os.path.join(OUTPUT_DIR, "{sample}.filtered.bed.gz.tbi")
+    threads: 4 
     run:
         if MAPQ > 0:
-            shell(f"zcat {input.raw_bed} | awk -F '\\t' '$4 >= {MAPQ}' | bgzip -c > {output.bed}")
+            shell(f"zcat {input.raw_bed} | awk -F '\\t' '$4 >= {MAPQ}' | bgzip -c -@ {threads} > {output.bed}")
             shell(f"tabix -p bed {output.bed}")
         else:
             shell(f"cp {input.raw_bed} {output.bed}")
@@ -115,13 +116,15 @@ rule filter_bam_mapq:
     output:
         bam=os.path.join(OUTPUT_DIR, "{sample}.filtered.bam"),
         bai=os.path.join(OUTPUT_DIR, "{sample}.filtered.bam.bai")
+    threads: 4
     run:
         if MAPQ > 0:
-            shell(f"samtools view -b -q {MAPQ} {input.raw_bam} > {output.bam}")
+            shell(f"samtools view -b -q {MAPQ} -@ {threads} {input.raw_bam} > {output.bam}")
             shell(f"samtools index {output.bam}")
         else:
             shell(f"cp {input.raw_bam} {output.bam}")
             shell(f"cp {input.raw_bai} {output.bai}")
+
 rule filter_cram_mapq:
     input:
         raw_cram=os.path.join(INPUT_DIR, "{sample}.cram"),
@@ -129,9 +132,10 @@ rule filter_cram_mapq:
     output:
         cram=os.path.join(OUTPUT_DIR, "{sample}.filtered.cram"),
         crai=os.path.join(OUTPUT_DIR, "{sample}.filtered.cram.crai")
+    threads: 4
     run:
         if MAPQ > 0:
-            shell(f"samtools view -b -q {MAPQ} {input.raw_cram} > {output.cram}")
+            shell(f"samtools view -b -q {MAPQ} -@ {threads} {input.raw_cram} > {output.cram}")
             shell(f"samtools index {output.cram}")
         else:
             shell(f"cp {input.raw_cram} {output.cram}")
@@ -147,13 +151,14 @@ rule blacklist_bed:
         tbi=os.path.join(OUTPUT_DIR, "{sample}.final.bed.gz.tbi"),
     params:
         blacklist=BLACKLIST
+    threads: 4
     shell:
         """
         if [[ "{params.blacklist}" == "None" ]]; then
             cp {input.bed} {output.bed}
             cp {input.tbi} {output.tbi}
         else
-            bedtools subtract -a {input.bed} -b {params.blacklist} | bgzip > {output.bed}
+            bedtools subtract -a {input.bed} -b {params.blacklist} | bgzip -@ {threads} > {output.bed}
             tabix -p bed {output.bed}
         fi
         """
@@ -167,13 +172,14 @@ rule blacklist_bam:
         bai=os.path.join(OUTPUT_DIR, "{sample}.final.bam.bai"),
     params:
         blacklist=BLACKLIST
+    threads: 4
     shell:
         """
         if [[ "{params.blacklist}" == "None" ]]; then
             cp {input.bam} {output.bam}
             cp {input.bai} {output.bai}
         else
-            samtools view -b -L {params.blacklist} {input.bam} > {output.bam}
+            samtools view -b -L {params.blacklist} -@ {threads} {input.bam} > {output.bam}
             samtools index {output.bam}
         fi
         """
@@ -187,13 +193,14 @@ rule blacklist_cram:
         crai=os.path.join(OUTPUT_DIR, "{sample}.final.cram.crai"),
     params:
         blacklist=BLACKLIST
+    threads: 4 
     shell:
         """
         if [[ "{params.blacklist}" == "None" ]]; then
             cp {input.cram} {output.cram}
             cp {input.crai} {output.crai}
         else
-            samtools view -b -L {params.blacklist} {input.cram} > {output.cram}
+            samtools view -b -L {params.blacklist} -@ {threads} {input.cram} > {output.cram}
             samtools index {output.cram}
         fi
         """
