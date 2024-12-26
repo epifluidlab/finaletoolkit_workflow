@@ -1,8 +1,8 @@
 output_dir: "output" # Default
 input_dir: "input" # Default
 supplement_dir: "supplement" # Store blacklist files if being used
-mapq: 30 # First, filter all .bam, .crai, .bed files 
-# blacklist: "blacklist.bed"
+# mapq: 30 # This would filter .bam, .crai, .bed files to a minimum mapq score of 30. However, this is redundant given the following finaletoolkit operation.
+blacklist: "blacklist.bed"
 use_finaletoolkit: True # For now, enables simply the frag-length-bins features
 
 # Frag-length-bins parameters
