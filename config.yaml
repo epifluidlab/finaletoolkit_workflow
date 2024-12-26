@@ -1,7 +1,15 @@
-output_dir: output # Output folder (default)
-input_dir: input # Input folder (default)
-mapq: 0 # Set to positive value to filter out lower mapq scores
-blacklist: null # Set to path of blacklist file to blacklist by midpoints
-compress: False # Set to True to save refined product as a .gz
+output_dir: "output" # Default
+input_dir: "input" # Default
+supplement_dir: "supplement" # Store blacklist files if being used
+mapq: 30 # First, filter all .bam, .crai, .bed files 
+# blacklist: "blacklist.bed"
+use_finaletoolkit: True # For now, enables simply the frag-length-bins features
 
-# Will add all the finaletoolkit params...
+# Frag-length-bins parameters
+frag_length_bins_mapq: 30
+frag_length_bins_bin_size: 10
+frag_length_bins_min_len: 50
+frag_length_bins_max_len: 350
+frag_length_bins_chrom: "22"
+frag_length_bins_start: 40000000
+frag_length_bins_end: 41000000
