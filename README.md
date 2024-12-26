@@ -5,7 +5,7 @@
 
 * Done: Blacklisting regions (midpoints), mapq score filtering, BED/BAM/CRAM compatability, Finaletoolkit frag-length-bins
 
-* Todo: Mappability, most other finaletoolkit commands, parallelism, slurm/batch, shell->python refactor
+* Todo: Combine BAM and CRAM rules, mappability, most other finaletoolkit commands, parallelism, slurm/batch
 
 ## Example usage
 `snakemake --configfile config.yaml -c1`
