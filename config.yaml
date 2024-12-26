@@ -1,15 +1,14 @@
 output_dir: "output" # Default
 input_dir: "input" # Default
 supplement_dir: "supplement" # Store blacklist files if being used
-# mapq: 30 # This would filter .bam, .crai, .bed files to a minimum mapq score of 30. However, this is redundant given the following finaletoolkit operation.
-blacklist: "blacklist.bed"
-use_finaletoolkit: True # For now, enables simply the frag-length-bins features
+mapq: 35 # Filter .bam, .crai, .bed files to a minimum mapq score of 35. 
+blacklist: "blacklist.bed" # Located in the supplement/ directory. Removes intervals where the midpoints are within the bounds of blacklisted intervals.
+use_finaletoolkit: True # For now, enables simply the frag-length-bins feature
 
 # Frag-length-bins parameters
-frag_length_bins_mapq: 30
 frag_length_bins_bin_size: 10
 frag_length_bins_min_len: 50
 frag_length_bins_max_len: 350
-frag_length_bins_chrom: "22"
-frag_length_bins_start: 40000000
-frag_length_bins_end: 41000000
+# frag_length_bins_chrom: "22"
+# frag_length_bins_start: 10031
+# frag_length_bins_end: 225368645
