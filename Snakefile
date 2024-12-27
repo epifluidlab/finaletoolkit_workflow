@@ -73,7 +73,7 @@ end_motifs_refseq_file = cnfg("end_motifs_refseq_file", None)
 end_motifs_kmer_length = cnfg("end_motifs_kmer_length", 4)
 end_motifs_min_len = cnfg("end_motifs_min_len", None)
 end_motifs_max_len = cnfg("end_motifs_max_len", None)
-end_motifs_no_both_strands = cnfg("end_motifs_no_both_strands", True)
+end_motifs_single_strand = cnfg("end_motifs_single_strand", False)
 end_motifs_negative_strand = cnfg("end_motifs_negative_strand", False)
 end_motifs_mapq = cnfg("end_motifs_mapq", 20)
 end_motifs_workers = cnfg("end_motifs_workers", 1)
@@ -85,10 +85,20 @@ interval_end_motifs_interval_file = cnfg("interval_end_motifs_interval_file", No
 interval_end_motifs_kmer_length = cnfg("interval_end_motifs_kmer_length", 4)
 interval_end_motifs_min_len = cnfg("interval_end_motifs_min_len", None)
 interval_end_motifs_max_len = cnfg("interval_end_motifs_max_len", None)
-interval_end_motifs_no_both_strands = cnfg("interval_end_motifs_no_both_strands", True)
+interval_end_motifs_single_strand = cnfg("interval_end_motifs_single_strand", False)
 interval_end_motifs_negative_strand = cnfg("interval_end_motifs_negative_strand", False)
 interval_end_motifs_mapq = cnfg("interval_end_motifs_mapq", 20)
 interval_end_motifs_workers = cnfg("interval_end_motifs_workers", None)
+
+# mds
+mds = cnfg("mds", False)
+mds_sep = cnfg("mds_sep", " ")
+mds_header = cnfg("mds_header", 0)
+
+# interval-mds
+interval_mds = cnfg("interval_mds", False)
+interval_mds_sep = cnfg("interval_mds_sep", " ")
+interval_mds_header = cnfg("interval_mds_header", 0)
 
 # wps
 wps = cnfg("wps", False)
@@ -144,7 +154,13 @@ cleavage_profile_workers = cnfg("cleavage_profile_workers", 1)
 if (adjust_wps and not wps):
     raise SystemExit("wps is required to run adjust-wps")
 
-using_finaletoolkit = frag_length_bins or frag_length_intervals or coverage or end_motifs or interval_end_motifs or wps or adjust_wps or delfi
+if (mds and not end_motifs):
+    raise SystemExit("end-motifs is required to run mds")
+
+if (interval_mds and not interval_end_motifs):
+    raise SystemExit("interval-end-motifs is required to run interval-mds")
+
+using_finaletoolkit = frag_length_bins or frag_length_intervals or coverage or end_motifs or interval_end_motifs or mds or interval_mds or wps or adjust_wps or delfi or cleavage_profile
 
 bed_files = glob.glob(cmb(in_dir, "*.gz"))
 bam_files = glob.glob(cmb(in_dir, "*.bam"))
@@ -170,6 +186,8 @@ rule all:
         io(["gz.coverage.bed"], sample_bed, coverage),
         io(["gz.end_motifs.tsv"], sample_bed, end_motifs),
         io(["gz.interval_end_motifs.tsv"], sample_bed, interval_end_motifs),
+        io(["gz.mds.txt"], sample_bed, mds),
+        io(["gz.interval_mds.tsv"], sample_bed, interval_mds),
         io(["gz.wps.bw"], sample_bed, wps),
         io(["gz.adjust_wps.bw"], sample_bed, adjust_wps),
         io(["gz.delfi.bed"], sample_bed, delfi),
@@ -181,22 +199,24 @@ rule all:
         io(["bam.coverage.bed"], sample_bam, coverage),
         io(["bam.end_motifs.tsv"], sample_bam, end_motifs),
         io(["bam.interval_end_motifs.tsv"], sample_bam, interval_end_motifs),
+        io(["bam.mds.txt"], sample_bam, mds),
+        io(["bam.interval_mds.tsv"], sample_bam, interval_mds),
         io(["bam.wps.bw"], sample_bam, wps),
         io(["bam.adjust_wps.bw"], sample_bam, adjust_wps),
         io(["bam.delfi.bed"], sample_bam, delfi),
         io(["bam.cleavage_profile.bw"], sample_bam, cleavage_profile),
-
         # (CRAM)
         io(["cram.frag_length_bins.tsv","cram.frag_length_bins.png"], sample_cram, frag_length_bins),
         io(["cram.frag_length_intervals.bed"], sample_cram, frag_length_intervals),
         io(["cram.coverage.bed"], sample_cram, coverage),
         io(["cram.end_motifs.tsv"], sample_cram, end_motifs),
         io(["cram.interval_end_motifs.tsv"], sample_cram, interval_end_motifs),
+        io(["cram.mds.txt"], sample_cram, mds),
+        io(["cram.interval_mds.tsv"], sample_cram, interval_mds),
         io(["cram.wps.bw"], sample_cram, wps),
         io(["cram.adjust_wps.bw"], sample_cram, adjust_wps),
         io(["cram.delfi.bed"], sample_cram, delfi),
         io(["cram.cleavage_profile.bw"], sample_cram, cleavage_profile),
-
 # STEP 0: Performance improvements by compressing and indexing the blacklist file
 if blacklist:
     blacklist_input_path = cmb(sup_dir, blacklist)
@@ -443,7 +463,7 @@ rule coverage:
         print("Running ", command)
         shell(f"{command}")
 
-rule finaletoolkit_end_motifs:
+rule end_motifs:
     input:
         data=lambda wildcards: cmb(out_dir, f"{wildcards.sample}.final.{wildcards.ext}"),
         refseq=cmb(sup_dir, f"{end_motifs_refseq_file}")
@@ -464,7 +484,7 @@ rule finaletoolkit_end_motifs:
         if end_motifs_max_len is not None:
             command_parts.append(f"-max {end_motifs_max_len}")
 
-        if end_motifs_no_both_strands:
+        if end_motifs_single_strand:
             command_parts.append("-B")
             if end_motifs_negative_strand:
                 command_parts.append("-n")
@@ -479,7 +499,7 @@ rule finaletoolkit_end_motifs:
         print("Running ", command)
         shell(f"{command}")
 
-rule finaletoolkit_interval_end_motifs:
+rule interval_end_motifs:
     input:
         data=lambda wildcards:  cmb(out_dir, f"{wildcards.sample}.final.{wildcards.ext}"),
         refseq=cmb(sup_dir, f"{interval_end_motifs_refseq_file}"),
@@ -502,7 +522,7 @@ rule finaletoolkit_interval_end_motifs:
         if interval_end_motifs_max_len is not None:
             command_parts.append(f"-max {interval_end_motifs_max_len}")
 
-        if interval_end_motifs_no_both_strands:
+        if interval_end_motifs_single_strand:
             command_parts.append("-B")
             if interval_end_motifs_negative_strand:
                 command_parts.append("-n")
@@ -512,6 +532,48 @@ rule finaletoolkit_interval_end_motifs:
         if interval_end_motifs_workers is not None:
             command_parts.append(f"-w {interval_end_motifs_workers}")
         command_parts.append(f"-o {output} -v")
+
+        command = " ".join(command_parts)
+        print("Running ", command)
+        shell(f"{command}")
+
+rule mds:
+    input:
+        lambda wildcards: cmb(out_dir, f"{wildcards.sample}.{wildcards.ext}.end_motifs.tsv")
+    output:
+        cmb(out_dir, "{sample}.{ext}.mds.txt")
+    run:
+        command_parts = [
+            "finaletoolkit",
+            "mds",
+            f"{input}"
+        ]
+        if mds_sep is not None and mds_sep != " ":
+            command_parts.append(f"-s {mds_sep}")
+        if mds_header is not None:
+            command_parts.append(f"--header {mds_header}")
+
+        command_parts.append(f"> {output}")
+        command = " ".join(command_parts)
+        print("Running ", command)
+        shell(f"{command}")
+
+rule interval_mds:
+    input:
+        lambda wildcards: cmb(out_dir, f"{wildcards.sample}.{wildcards.ext}.interval_end_motifs.tsv")
+    output:
+        cmb(out_dir, "{sample}.{ext}.interval_mds.tsv")
+    run:
+        command_parts = [
+            "finaletoolkit",
+            "interval-mds",
+            f"{input}",
+            f"{output}"
+        ]
+        if interval_mds_sep is not None and interval_mds_sep != " ":
+            command_parts.append(f"-s {interval_mds_sep}")
+        if interval_mds_header is not None:
+            command_parts.append(f"--header {interval_mds_header}")
 
         command = " ".join(command_parts)
         print("Running ", command)
