@@ -1,7 +1,6 @@
 output_dir: "output"
 input_dir: "input"
 supplement_dir: "supplement" 
-# Below are some example parameters to run the pipeline with
 # mapq: 35 
 # blacklist: "blacklist.bed"
 
@@ -49,7 +48,63 @@ supplement_dir: "supplement"
 # interval_end_motifs_kmer_length: 4
 # interval_end_motifs_min_len: 50
 # interval_end_motifs_max_len: 250
-# interval_end_motifs_no_both_strands: True
+# interval_end_motifs_single_strand: False
 # interval_end_motifs_negative_strand: False
 # interval_end_motifs_mapq: 30
 # interval_end_motifs_workers: 8
+
+# mds: True
+# mds_sep: " "
+# mds_header: 0
+
+# interval_mds: True
+# interval_mds_sep: " "
+# interval_mds_header: 0
+
+# wps: True
+# wps_chrom_sizes: "hg19.chrom.sizes"
+# wps_site_bed: "tss.hg19.intervals.chr22.bed"
+# wps_interval_size: 5000
+# wps_window_size: 120
+# wps_min_len: 120
+# wps_max_len: 180
+# wps_mapq: 30
+# wps_workers: 4
+
+# adjust_wps: True
+# adjust_wps_interval_file: "tss.hg19.intervals.chr22.bed"
+# adjust_wps_chrom_sizes: "hg19.chrom.sizes"
+# adjust_wps_interval_size: 5000
+# adjust_wps_median_window_size: 200
+# adjust_wps_savgol_window_size: 21
+# adjust_wps_savgol_poly_deg: 2
+# adjust_wps_exclude_savgol: True
+# adjust_wps_workers: 4
+# adjust_wps_mean: False
+# adjust_wps_subtract_edges: True
+# adjust_wps_edge_size: 500 # Breaks functionality for some reason
+
+# delfi: True
+# delfi_blacklist_file: "ENCFF001TDO.bed"
+# # Only one of the two parameters below need to be given
+# delfi_gap_file: "hg19.gap.bed" # Now optional in yaml
+# # delfi_gap_reference_genome: "hg19"
+# delfi_chrom_sizes: "hg19.chrom.sizes"
+# delfi_reference_file: "hg19.2bit"
+# delfi_bins_file: "100kb.chr22.bins"
+# delfi_no_gc_correct: False
+# delfi_keep_nocov: False
+# delfi_no_merge_bins: True
+# delfi_window_size: 5000000
+# delfi_quality_threshold: 30
+# delfi_workers: 4
+
+# cleavage_profile: True
+# cleavage_profile_interval_file: "tss.hg19.chr22.bed"
+# cleavage_profile_chrom_sizes: "hg19.chrom.sizes"
+# cleavage_profile_min_len: 50
+# cleavage_profile_max_len: 350
+# cleavage_profile_mapq: 30
+# cleavage_profile_left: 2000
+# cleavage_profile_right: 2000
+# cleavage_profile_workers: 8
