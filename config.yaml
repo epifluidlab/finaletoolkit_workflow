@@ -1,14 +1,55 @@
-output_dir: "output" # Default
-input_dir: "input" # Default
-supplement_dir: "supplement" # Store blacklist files if being used
-mapq: 35 # Filter .bam, .crai, .bed files to a minimum mapq score of 35. 
-blacklist: "blacklist.bed" # Located in the supplement/ directory. Removes intervals where the midpoints are within the bounds of blacklisted intervals.
-use_finaletoolkit: True # For now, enables simply the frag-length-bins feature
+output_dir: "output"
+input_dir: "input"
+supplement_dir: "supplement" 
+# Below are some example parameters to run the pipeline with
+# mapq: 35 
+# blacklist: "blacklist.bed"
 
 # Frag-length-bins parameters
-frag_length_bins_bin_size: 10
-frag_length_bins_min_len: 50
-frag_length_bins_max_len: 350
+# frag_length_bins: True
+# frag_length_bins_bin_size: 10
+# frag_length_bins_min_len: 50
+# frag_length_bins_max_len: 350
 # frag_length_bins_chrom: "22"
 # frag_length_bins_start: 10031
 # frag_length_bins_end: 225368645
+
+# Frag-length-intervals parameters
+# frag_length_intervals: True
+# frag_length_interval_file: "100kb.chr22.bins" 
+# frag_length_intervals_mapq: 30
+# frag_length_intervals_policy: "midpoint"
+# frag_length_intervals_min_len: 50
+# frag_length_intervals_max_len: 350
+# frag_length_intervals_workers: 4
+
+# coverage: True
+# coverage_interval_file: "100kb.chr22.bins"
+# coverage_mapq: 40
+# coverage_intersect_policy: "any"
+# coverage_min_len: 25
+# coverage_max_len: 250
+# coverage_workers: 8
+# coverage_normalize: True
+# coverage_scale_factor: 1000000
+
+# end_motifs: True
+# end_motifs_refseq_file: "hg19.2bit"
+# end_motifs_kmer_length: 5
+# end_motifs_min_len: 20
+# end_motifs_max_len: 100
+# end_motifs_no_both_strands: True
+# end_motifs_negative_strand: False
+# end_motifs_mapq: 30
+# end_motifs_workers: 8
+
+# interval_end_motifs: True
+# interval_end_motifs_refseq_file: "hg19.2bit"
+# interval_end_motifs_interval_file: "100kb.chr22.bins" 
+# interval_end_motifs_kmer_length: 4
+# interval_end_motifs_min_len: 50
+# interval_end_motifs_max_len: 250
+# interval_end_motifs_no_both_strands: True
+# interval_end_motifs_negative_strand: False
+# interval_end_motifs_mapq: 30
+# interval_end_motifs_workers: 8
