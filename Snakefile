@@ -13,7 +13,8 @@ def check_tools():
     "finaletoolkit": "finaletoolkit --help",
     "bedtools": "bedtools --help",
     "htslib": "htsfile --help",
-    "samtools": "samtools --help"
+    "samtools": "samtools --help",
+    "bedmappabilityfilter": "bedMappabilityFilter --help"
     }
     missing_tools = []
     for tool, command in tools.items():
@@ -22,7 +23,7 @@ def check_tools():
         except (subprocess.CalledProcessError, FileNotFoundError):
             missing_tools.append(tool)
     if missing_tools:
-        raise SystemExit(f"Error: The following tools are not installed: {', '.join(missing_tools)}. Please install them. (finaletoolkit via pip, bedtools, samtools, htslib via conda or system package manager)")
+        raise SystemExit(f"Error: The following tools are not installed: {', '.join(missing_tools)}. Please install them:\n\n pip install finaletoolkit && conda install bioconda::bedtools bioconda::samtools bioconda::htslib kudosbeluga::bedmappabilityfilter\n\n")
 
 check_tools()
 
@@ -31,8 +32,9 @@ in_dir = cnfg("input_dir", "input")
 sup_dir = cnfg("supplement_dir", "supplement") # Should contain interval, blacklist, .chrom.sizes, .2bit, and other files that supplement the input files
 
 mapq = int(cnfg("mapq", 0))
-
 blacklist = cnfg("blacklist", None)
+mappability_file = cnfg("mappability_file", None)
+mappability_threshold = cnfg("mappability_threshold", 0)
 
 # Finale Toolkit parameters
 
@@ -245,8 +247,8 @@ rule filter_bed_mapq:
         raw_bed=cmb(in_dir, "{sample}.gz"),
         raw_tbi=cmb(in_dir, "{sample}.gz.tbi")
     output:
-        bed=cmb(out_dir, "{sample}.gz"),
-        tbi=cmb(out_dir, "{sample}.gz.tbi")
+        bed=cmb(out_dir, "{sample}.1.gz"),
+        tbi=cmb(out_dir, "{sample}.1.gz.tbi")
     threads: 4 
     run:
         if mapq > 0:
@@ -261,8 +263,8 @@ rule filter_bam_mapq:
         raw_bam=cmb(in_dir, "{sample}.bam"),
         raw_bai=cmb(in_dir, "{sample}.bam.bai")
     output:
-        bam=cmb(out_dir, "{sample}.bam"),
-        bai=cmb(out_dir, "{sample}.bam.bai")
+        bam=cmb(out_dir, "{sample}.1.bam"),
+        bai=cmb(out_dir, "{sample}.1.bam.bai")
     threads: 4
     run:
         if mapq > 0:
@@ -272,13 +274,14 @@ rule filter_bam_mapq:
             shell(f"cp {input.raw_bam} {output.bam}")
             shell(f"cp {input.raw_bai} {output.bai}")
 
+
 rule filter_cram_mapq:
     input:
         raw_cram=cmb(in_dir, "{sample}.cram"),
         raw_crai=cmb(in_dir, "{sample}.cram.crai")
     output:
-        cram=cmb(out_dir, "{sample}.cram"),
-        crai=cmb(out_dir, "{sample}.cram.crai")
+        cram=cmb(out_dir, "{sample}.1.cram"),
+        crai=cmb(out_dir, "{sample}.1.cram.crai")
     threads: 4
     run:
         if mapq > 0:
@@ -288,11 +291,84 @@ rule filter_cram_mapq:
             shell(f"cp {input.raw_cram} {output.cram}")
             shell(f"cp {input.raw_crai} {output.crai}")
 
-# STEP 2: Remove regions based off of blacklist file
-rule blacklist_bed:
+# STEP 2: Filter by mappability
+rule filter_bed_mappability:
     input:
         bed=rules.filter_bed_mapq.output.bed,
-        tbi=rules.filter_bed_mapq.output.tbi,
+        tbi=rules.filter_bed_mapq.output.tbi
+    output:
+        bed=cmb(out_dir, "{sample}.2.gz"),
+        tbi=cmb(out_dir, "{sample}.2.gz.tbi")
+    params:
+        threshold=mappability_threshold,
+        bigwig=cmb(sup_dir,mappability_file) if mappability_file is not None else None
+    shell:
+        """
+        if [[ "{params.bigwig}" != "None" ]]; then
+            zcat {input.bed} > temp.bed
+            bedMappabilityFilter --bigwig {params.bigwig} --bed temp.bed --output filtered.bed --minimum-mappability {params.threshold}
+            bgzip -@ {threads} -c filtered.bed > {output.bed}
+            tabix -p bed {output.bed}
+            rm temp.bed
+        else
+            mv {input.bed} {output.bed}
+            mv {input.tbi} {output.tbi}
+        fi
+        """
+
+rule filter_bam_mappability:
+    input:
+        bam=rules.filter_bam_mapq.output.bam,
+        bai=rules.filter_bam_mapq.output.bai
+    output:
+        bam=cmb(out_dir, "{sample}.2.bam"),
+        bai=cmb(out_dir, "{sample}.2.bam.bai")
+    threads: 8
+    params:
+        threshold=mappability_threshold,
+        bigwig=cmb(sup_dir,mappability_file) if mappability_file is not None else None
+    shell:
+        """
+        if [[ "{params.bigwig}" != "None" ]]; then
+            bedMappabilityFilter --bigwig {params.bigwig} --bam {input.bam} --output {output.bam} --minimum-mappability {params.threshold} --threads {threads}
+            samtools index {output.bam}
+            rm {input.bam}
+            rm {input.bai}
+        else
+            mv {input.bam} {output.bam}
+            mv {input.bai} {output.bai}
+        fi
+        """
+
+rule filter_cram_mappability:
+    input:
+        cram=rules.filter_cram_mapq.output.cram,
+        crai=rules.filter_cram_mapq.output.crai
+    output:
+        cram=cmb(out_dir, "{sample}.2.cram"),
+        crai=cmb(out_dir, "{sample}.2.cram.crai")
+    threads: 8
+    params:
+        threshold=mappability_threshold,
+        bigwig=cmb(sup_dir,mappability_file) if mappability_file is not None else None
+    shell:
+        """
+        if [[ "{params.bigwig}" != "None" ]]; then
+            bedMappabilityFilter --bigwig {params.bigwig} --bam {input.cram} --output {output.cram} --minimum-mappability {params.threshold} --threads {threads}
+            samtools index {output.cram}
+            rm {input.cram}
+            rm {input.crai}
+        else
+            mv {input.cram} {output.cram}
+            mv {input.crai} {output.crai}
+        fi
+        """
+
+# STEP 3: Remove regions based off of blacklist file
+rule blacklist_bed:
+    input:
+        bed=rules.filter_bed_mappability.output.bed,
+        tbi=rules.filter_bed_mappability.output.tbi
     output:
         bed=cmb(out_dir, "{sample}.final.gz"),
         tbi=cmb(out_dir, "{sample}.final.gz.tbi"),
@@ -314,8 +390,8 @@ rule blacklist_bed:
 
 rule blacklist_bam:
     input:
-        bam=rules.filter_bam_mapq.output.bam,
-        bai=rules.filter_bam_mapq.output.bai,
+        bam=rules.filter_bam_mappability.output.bam,
+        bai=rules.filter_bam_mappability.output.bai
     output:
         bam=cmb(out_dir, "{sample}.final.bam"),
         bai=cmb(out_dir, "{sample}.final.bam.bai"),
@@ -337,8 +413,8 @@ rule blacklist_bam:
 
 rule blacklist_cram:
     input:
-        cram=rules.filter_cram_mapq.output.cram,
-        crai=rules.filter_cram_mapq.output.cram,
+        cram=rules.filter_cram_mappability.output.cram,
+        crai=rules.filter_cram_mappability.output.crai
     output:
         cram=cmb(out_dir, "{sample}.final.cram"),
         crai=cmb(out_dir, "{sample}.final.cram.crai"),
