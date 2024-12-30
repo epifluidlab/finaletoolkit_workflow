@@ -8,8 +8,8 @@
 * Todo: slurm/batch, agg-bw (filter-bam functionality will be integrated into workflow)
 
 ## Example usage
-`snakemake --configfile config.yaml -c8 -j 2`
+`snakemake --configfile params.yaml -c8 -j 2`
 
-This runs the snakemake pipeline using parameters specified in config.yaml on 8 cores, with up to 2 rules running at a time.
+This runs the snakemake pipeline using parameters specified in params.yaml on 8 cores, with up to 2 rules running at a time.
 
 Input files from the specified input directory are processed into the specified output directory. Blacklist and secondary input files for finaletoolkit go in the supplementary directory.
