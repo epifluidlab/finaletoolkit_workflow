@@ -1,39 +1,47 @@
 /*
-
 Quickly computes average BigWig values (mappability scores) for repeated queries
 over an interval by precomputing a prefix sum for the current chromosome,
-binary searching for the indeces of the smallest and largest bigWig interval 
-within the bed read's range, computing the sum of all intermediary 
+binary searching for the indeces of the smallest and largest bigWig interval
+within the bed=bam/cram read range, computing the sum of all intermediary
 bigWig intervals in constant time through the prefix sum, and dividing by
-the differences in indeces to get the average. 
+the differences in indeces to get the average.
 
 > conda install kudosbeluga::bedmappabilityfilter
 
 */
 
-
 use bigtools::{BBIFileRead, BigWigRead};
 use clap::Parser;
+use rust_htslib::{bam, bam::Read};
 use std::fs::File;
 use std::io::{self, BufRead, BufWriter, Write};
 use std::path::PathBuf;
 
-
 #[derive(Parser, Debug)]
-#[clap(author, version, about = "Filters BED entries based on average BigWig values", long_about = None)]
+#[clap(
+    author,
+    version,
+    about = "Filters BED or BAM/CRAM entries based on average BigWig values",
+    long_about = None
+)]
 struct Args {
-
     #[clap(long, value_parser, required = true)]
     bigwig: PathBuf,
 
-    #[clap(long, value_parser, required = true)]
-    bed: PathBuf,
+    #[clap(long, value_parser, required_unless_present = "bam")]
+    bed: Option<PathBuf>,
+
+    #[clap(long, value_parser, required_unless_present = "bed")]
+    bam: Option<PathBuf>,
 
     #[clap(long, value_parser, required = true)]
     output: PathBuf,
 
     #[clap(long, value_parser, required = true)]
     minimum_mappability: f32,
+
+    #[clap(long, value_parser, default_value = "1")]
+    threads: usize,
 }
 
 #[derive(Debug)]
@@ -47,12 +55,9 @@ fn main() -> io::Result<()> {
     let args = Args::parse();
 
     let bigwig_path = &args.bigwig;
-    let bed_path = &args.bed;
-    let filtered_bed_path = &args.output;
+    let output_path = &args.output;
     let minimum_mappability = args.minimum_mappability;
-
-    let mut bed_reader = io::BufReader::new(File::open(bed_path)?);
-    let mut filtered_writer = BufWriter::new(File::create(filtered_bed_path)?);
+    let threads = args.threads;
 
     let mut current_chromosome = String::new();
     let mut interval_values: Vec<IntervalValue> = Vec::new();
@@ -63,7 +68,10 @@ fn main() -> io::Result<()> {
         reader: &mut BigWigRead<R>,
         chromosome: &str,
     ) -> Option<(Vec<IntervalValue>, Vec<f32>)> {
-        let chrom_info = reader.chroms().iter().find(|c| c.name == format!("chr{}", chromosome));
+        let chrom_info = reader
+            .chroms()
+            .iter()
+            .find(|c| c.name == format!("chr{}", chromosome));
         match chrom_info {
             Some(info) => {
                 let chr_length = info.length;
@@ -90,7 +98,10 @@ fn main() -> io::Result<()> {
                 Some((intervals, prefix_sum))
             }
             None => {
-                eprintln!("Chromosome {} not found in the bigWig file.", chromosome);
+                eprintln!(
+                    "Chromosome {} not found in the bigWig file: Excluding by default.",
+                    chromosome
+                );
                 None
             }
         }
@@ -136,73 +147,164 @@ fn main() -> io::Result<()> {
         }
     }
 
-    let mut line = String::new();
-    while bed_reader.read_line(&mut line)? > 0 {
-        let parts: Vec<&str> = line.trim().split('\t').collect();
-        if parts.len() >= 3 {
-            if let (Ok(start), Ok(end)) = (parts[1].parse::<u32>(), parts[2].parse::<u32>()) {
-                let chromosome = parts[0];
-                if chromosome != current_chromosome {
-                    let mut bigwig_reader = BigWigRead::open_file(bigwig_path).unwrap();
-                    if let Some((intervals, p_sum)) = load_chromosome_data(&mut bigwig_reader, chromosome) {
-                        interval_values = intervals;
-                        prefix_sum = p_sum;
-                        current_chromosome = chromosome.to_string();
-                    } else {
-                        println!("{} not found",chromosome.to_string());
-                        interval_values.clear();
-                        prefix_sum.clear();
-                        current_chromosome = chromosome.to_string();
-                        line.clear();
-                        continue;
+    if let Some(bed_path) = &args.bed {
+        // BED file processing
+        let mut bed_reader = io::BufReader::new(File::open(bed_path)?);
+        let mut filtered_writer = BufWriter::new(File::create(output_path)?);
+
+        let mut line = String::new();
+        while bed_reader.read_line(&mut line)? > 0 {
+            let parts: Vec<&str> = line.trim().split('\t').collect();
+            if parts.len() >= 3 {
+                if let (Ok(start), Ok(end)) = (parts[1].parse::<u32>(), parts[2].parse::<u32>()) {
+                    let chromosome = parts[0];
+                    if chromosome != current_chromosome {
+                        let mut bigwig_reader = BigWigRead::open_file(bigwig_path).unwrap();
+                        if let Some((intervals, p_sum)) =
+                            load_chromosome_data(&mut bigwig_reader, chromosome)
+                        {
+                            interval_values = intervals;
+                            prefix_sum = p_sum;
+                            current_chromosome = chromosome.to_string();
+                        } else {
+                            println!("{} not found", chromosome.to_string());
+                            interval_values.clear();
+                            prefix_sum.clear();
+                            current_chromosome = chromosome.to_string();
+                            line.clear();
+                            continue;
+                        }
                     }
-                }
 
-                if !interval_values.is_empty() {
-                    let lower_bound_index = binary_search_lower_bound(&interval_values, start);
-                    let upper_bound_index = binary_search_upper_bound(&interval_values, end);
+                    if !interval_values.is_empty() {
+                        let lower_bound_index = binary_search_lower_bound(&interval_values, start);
+                        let upper_bound_index = binary_search_upper_bound(&interval_values, end);
 
-                    let mut sum = 0.0;
-                    let mut count = 0;
+                        let mut sum = 0.0;
+                        let mut count = 0;
 
-                    match (lower_bound_index, upper_bound_index) {
-                        (Some(start_index), Some(end_index)) => {
-                            if start_index <= end_index {
-                                for i in start_index..=end_index {
-                                    if interval_values[i].start <= end && interval_values[i].end >= start {
-                                        let overlap_start = std::cmp::max(interval_values[i].start, start);
-                                        let overlap_end = std::cmp::min(interval_values[i].end, end);
-                                        let overlap_length = overlap_end - overlap_start;
+                        match (lower_bound_index, upper_bound_index) {
+                            (Some(start_index), Some(end_index)) => {
+                                if start_index <= end_index {
+                                    for i in start_index..=end_index {
+                                        if interval_values[i].start <= end
+                                            && interval_values[i].end >= start
+                                        {
+                                            let overlap_start =
+                                                std::cmp::max(interval_values[i].start, start);
+                                            let overlap_end =
+                                                std::cmp::min(interval_values[i].end, end);
+                                            let overlap_length = overlap_end - overlap_start;
 
-                                        let contribution = if interval_values[i].value.is_nan() {
-                                            0.0
-                                        } else {
-                                            interval_values[i].value * overlap_length as f32
-                                        };
-                                        sum += contribution;
-                                        count += overlap_length;
+                                            let contribution = if interval_values[i].value.is_nan()
+                                            {
+                                                0.0
+                                            } else {
+                                                interval_values[i].value * overlap_length as f32
+                                            };
+                                            sum += contribution;
+                                            count += overlap_length;
+                                        }
                                     }
                                 }
                             }
+                            _ => {}
                         }
-                        _ => {}
-                    }
 
-                    if count > 0 {
-                        let average = sum / count as f32;
-                        if average >= minimum_mappability {
-                            filtered_writer.write_all(line.as_bytes())?;
+                        if count > 0 {
+                            let average = sum / count as f32;
+                            if average >= minimum_mappability {
+                                filtered_writer.write_all(line.as_bytes())?;
+                            }
+                        } else {
+                            eprintln!("Warning: Couldn't find mappability scores for chromosome {}, start {}, end {}.", chromosome.to_string(),start,end);
                         }
-                    } else {
-                        eprintln!("Warning: Couldn't find mappability scores for chromosome {}, start {}, end {}.", chromosome.to_string(),start,end);
                     }
+                } else {
+                    eprintln!("Warning: Skipping line due to non-integer start or end coordinates. Probable descriptor line: '{}'", line.trim());
                 }
-            } else {
-                eprintln!("Warning: Skipping line due to non-integer start or end coordinates. Probable descriptor line: '{}'", line.trim());
+            }
+            line.clear();
+        }
+    } else if let Some(bam_path) = &args.bam {
+        // BAM/CRAM file processing
+        let mut bam = bam::Reader::from_path(bam_path).unwrap();
+        bam.set_threads(threads).unwrap();
+        let header_view = bam.header().to_owned();
+        let header = bam::Header::from_template(&header_view);
+        let mut out = bam::Writer::from_path(output_path, &header, bam::Format::Bam).unwrap();
+        out.set_threads(threads).unwrap();
+
+        for r in bam.records() {
+            let record = r.unwrap();
+            let start = record.pos() as u32;
+            let end = record.pos() as u32 + record.seq_len() as u32;
+            let tid = record.tid();
+            if tid == -1 {
+                continue;
+            }
+            let chromosome = String::from_utf8_lossy(header_view.tid2name(record.tid() as u32)).into_owned();
+
+            if chromosome != current_chromosome {
+                let mut bigwig_reader = BigWigRead::open_file(bigwig_path).unwrap();
+                if let Some((intervals, p_sum)) =
+                    load_chromosome_data(&mut bigwig_reader, &chromosome)
+                {
+                    interval_values = intervals;
+                    prefix_sum = p_sum;
+                    current_chromosome = chromosome.to_string();
+                } else {
+                    println!("{} not found", chromosome.to_string());
+                    interval_values.clear();
+                    prefix_sum.clear();
+                    current_chromosome = chromosome.to_string();
+                    continue;
+                }
+            }
+
+            if !interval_values.is_empty() {
+                let lower_bound_index = binary_search_lower_bound(&interval_values, start);
+                let upper_bound_index = binary_search_upper_bound(&interval_values, end);
+
+                let mut sum = 0.0;
+                let mut count = 0;
+
+                match (lower_bound_index, upper_bound_index) {
+                    (Some(start_index), Some(end_index)) => {
+                        if start_index <= end_index {
+                            for i in start_index..=end_index {
+                                if interval_values[i].start <= end && interval_values[i].end >= start
+                                {
+                                    let overlap_start =
+                                        std::cmp::max(interval_values[i].start, start);
+                                    let overlap_end = std::cmp::min(interval_values[i].end, end);
+                                    let overlap_length = overlap_end - overlap_start;
+
+                                    let contribution = if interval_values[i].value.is_nan() {
+                                        0.0
+                                    } else {
+                                        interval_values[i].value * overlap_length as f32
+                                    };
+                                    sum += contribution;
+                                    count += overlap_length;
+                                }
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+
+                if count > 0 {
+                    let average = sum / count as f32;
+                    if average >= minimum_mappability {
+                        out.write(&record).unwrap();
+                    }
+                } else {
+                    eprintln!("Warning: Couldn't find mappability scores for chromosome {}, start {}, end {}.", chromosome.to_string(),start,end);
+                }
             }
         }
-        line.clear();
     }
 
     Ok(())
-}
+}	
