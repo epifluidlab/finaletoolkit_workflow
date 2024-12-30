@@ -140,61 +140,65 @@ fn main() -> io::Result<()> {
     while bed_reader.read_line(&mut line)? > 0 {
         let parts: Vec<&str> = line.trim().split('\t').collect();
         if parts.len() >= 3 {
-            let chromosome = parts[0];
-            let start: u32 = parts[1].parse().unwrap();
-            let end: u32 = parts[2].parse().unwrap();
-
-            if chromosome != current_chromosome {
-                let mut bigwig_reader = BigWigRead::open_file(bigwig_path).unwrap();
-                if let Some((intervals, p_sum)) = load_chromosome_data(&mut bigwig_reader, chromosome) {
-                    interval_values = intervals;
-                    prefix_sum = p_sum;
-                    current_chromosome = chromosome.to_string();
-                } else {
-                    interval_values.clear();
-                    prefix_sum.clear();
-                    current_chromosome = chromosome.to_string();
-                    line.clear();
-                    continue;
+            if let (Ok(start), Ok(end)) = (parts[1].parse::<u32>(), parts[2].parse::<u32>()) {
+                let chromosome = parts[0];
+                if chromosome != current_chromosome {
+                    let mut bigwig_reader = BigWigRead::open_file(bigwig_path).unwrap();
+                    if let Some((intervals, p_sum)) = load_chromosome_data(&mut bigwig_reader, chromosome) {
+                        interval_values = intervals;
+                        prefix_sum = p_sum;
+                        current_chromosome = chromosome.to_string();
+                    } else {
+                        println!("{} not found",chromosome.to_string());
+                        interval_values.clear();
+                        prefix_sum.clear();
+                        current_chromosome = chromosome.to_string();
+                        line.clear();
+                        continue;
+                    }
                 }
-            }
 
-            if !interval_values.is_empty() {
-                let lower_bound_index = binary_search_lower_bound(&interval_values, start);
-                let upper_bound_index = binary_search_upper_bound(&interval_values, end);
+                if !interval_values.is_empty() {
+                    let lower_bound_index = binary_search_lower_bound(&interval_values, start);
+                    let upper_bound_index = binary_search_upper_bound(&interval_values, end);
 
-                let mut sum = 0.0;
-                let mut count = 0;
+                    let mut sum = 0.0;
+                    let mut count = 0;
 
-                match (lower_bound_index, upper_bound_index) {
-                    (Some(start_index), Some(end_index)) => {
-                        if start_index <= end_index {
-                            for i in start_index..=end_index {
-                                if interval_values[i].start <= end && interval_values[i].end >= start {
-                                    let overlap_start = std::cmp::max(interval_values[i].start, start);
-                                    let overlap_end = std::cmp::min(interval_values[i].end, end);
-                                    let overlap_length = overlap_end - overlap_start;
+                    match (lower_bound_index, upper_bound_index) {
+                        (Some(start_index), Some(end_index)) => {
+                            if start_index <= end_index {
+                                for i in start_index..=end_index {
+                                    if interval_values[i].start <= end && interval_values[i].end >= start {
+                                        let overlap_start = std::cmp::max(interval_values[i].start, start);
+                                        let overlap_end = std::cmp::min(interval_values[i].end, end);
+                                        let overlap_length = overlap_end - overlap_start;
 
-                                    let contribution = if interval_values[i].value.is_nan() {
-                                        0.0
-                                    } else {
-                                        interval_values[i].value * overlap_length as f32
-                                    };
-                                    sum += contribution;
-                                    count += overlap_length;
+                                        let contribution = if interval_values[i].value.is_nan() {
+                                            0.0
+                                        } else {
+                                            interval_values[i].value * overlap_length as f32
+                                        };
+                                        sum += contribution;
+                                        count += overlap_length;
+                                    }
                                 }
                             }
                         }
+                        _ => {}
                     }
-                    _ => {}
-                }
 
-                if count > 0 {
-                    let average = sum / count as f32;
-                    if average >= minimum_mappability {
-                        filtered_writer.write_all(line.as_bytes())?;
+                    if count > 0 {
+                        let average = sum / count as f32;
+                        if average >= minimum_mappability {
+                            filtered_writer.write_all(line.as_bytes())?;
+                        }
+                    } else {
+                        eprintln!("Warning: Couldn't find mappability scores for chromosome {}, start {}, end {}.", chromosome.to_string(),start,end);
                     }
                 }
+            } else {
+                eprintln!("Warning: Skipping line due to non-integer start or end coordinates. Probable descriptor line: '{}'", line.trim());
             }
         }
         line.clear();
