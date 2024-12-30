@@ -2,7 +2,7 @@
 Quickly computes average BigWig values (mappability scores) for repeated queries
 over an interval by precomputing a prefix sum for the current chromosome,
 binary searching for the indeces of the smallest and largest bigWig interval
-within the bed=bam/cram read range, computing the sum of all intermediary
+within the bed/bam/cram read range, computing the sum of all intermediary
 bigWig intervals in constant time through the prefix sum, and dividing by
 the differences in indeces to get the average.
 
@@ -25,22 +25,22 @@ use std::path::PathBuf;
     long_about = None
 )]
 struct Args {
-    #[clap(long, value_parser, required = true)]
+    #[clap(long, value_parser, required = true, help = "Path to the BigWig file")]
     bigwig: PathBuf,
 
-    #[clap(long, value_parser, required_unless_present = "bam")]
+    #[clap(long, value_parser, required_unless_present = "bam", help = "Path to a BED file")]
     bed: Option<PathBuf>,
 
-    #[clap(long, value_parser, required_unless_present = "bed")]
+    #[clap(long, value_parser, required_unless_present = "bed", help = "Path to a BAM/CRAM file")]
     bam: Option<PathBuf>,
 
-    #[clap(long, value_parser, required = true)]
+    #[clap(long, value_parser, required = true, help = "Path to the output file")]
     output: PathBuf,
 
-    #[clap(long, value_parser, required = true)]
+    #[clap(long, value_parser, required = true, help = "Minimum average mappability score to retain")]
     minimum_mappability: f32,
 
-    #[clap(long, value_parser, default_value = "1")]
+    #[clap(long, value_parser, default_value = "1", help = "Number of threads for BAM/CRAM processing")]
     threads: usize,
 }
 
@@ -217,7 +217,7 @@ fn main() -> io::Result<()> {
                                 filtered_writer.write_all(line.as_bytes())?;
                             }
                         } else {
-                            eprintln!("Warning: Couldn't find mappability scores for chromosome {}, start {}, end {}.", chromosome.to_string(),start,end);
+                            eprintln!("Warning: Couldn't find mappability scores for chromosome {}, start {}, end {}: Excluding by default.", chromosome.to_string(),start,end);
                         }
                     }
                 } else {
@@ -300,7 +300,7 @@ fn main() -> io::Result<()> {
                         out.write(&record).unwrap();
                     }
                 } else {
-                    eprintln!("Warning: Couldn't find mappability scores for chromosome {}, start {}, end {}.", chromosome.to_string(),start,end);
+                    eprintln!("Warning: Couldn't find mappability scores for chromosome {}, start {}, end {}: Excluding by default.", chromosome.to_string(),start,end);
                 }
             }
         }
