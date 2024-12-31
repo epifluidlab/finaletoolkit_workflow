@@ -1,0 +1,9 @@
+executor: slurm
+configfile: "params.yaml"
+jobs: 4
+cores: 8
+default-resources:
+  slurm_account: "mcb190124p"
+  slurm_partition: "RM-shared" # Execute on shared node
+  mem_mb: 1000 # 1GB per job
+  runtime: 2 # 2 minutes max per job
