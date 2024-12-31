@@ -99,7 +99,7 @@ fn main() -> io::Result<()> {
             }
             None => {
                 eprintln!(
-                    "Chromosome {} not found in the bigWig file: Excluding by default.",
+                    "chr{} not in bigWig file, excluding.",
                     chromosome
                 );
                 None
@@ -157,7 +157,8 @@ fn main() -> io::Result<()> {
             let parts: Vec<&str> = line.trim().split('\t').collect();
             if parts.len() >= 3 {
                 if let (Ok(start), Ok(end)) = (parts[1].parse::<u32>(), parts[2].parse::<u32>()) {
-                    let chromosome = parts[0];
+                    let chromosome = parts[0].strip_prefix("chr").unwrap_or(parts[0]);
+                    // println!("{}",chromosome);
                     if chromosome != current_chromosome {
                         let mut bigwig_reader = BigWigRead::open_file(bigwig_path).unwrap();
                         if let Some((intervals, p_sum)) =
@@ -167,7 +168,6 @@ fn main() -> io::Result<()> {
                             prefix_sum = p_sum;
                             current_chromosome = chromosome.to_string();
                         } else {
-                            println!("{} not found", chromosome.to_string());
                             interval_values.clear();
                             prefix_sum.clear();
                             current_chromosome = chromosome.to_string();
@@ -217,11 +217,11 @@ fn main() -> io::Result<()> {
                                 filtered_writer.write_all(line.as_bytes())?;
                             }
                         } else {
-                            eprintln!("Warning: Couldn't find mappability scores for chromosome {}, start {}, end {}: Excluding by default.", chromosome.to_string(),start,end);
+                            eprintln!("chr{}:{}-{} has no intersecting values, excluding.", chromosome.to_string(),start,end);
                         }
                     }
                 } else {
-                    eprintln!("Warning: Skipping line due to non-integer start or end coordinates. Probable descriptor line: '{}'", line.trim());
+                    eprintln!("Skipping line: '{}'", line.trim());
                 }
             }
             line.clear();
@@ -254,7 +254,6 @@ fn main() -> io::Result<()> {
                     prefix_sum = p_sum;
                     current_chromosome = chromosome.to_string();
                 } else {
-                    println!("{} not found", chromosome.to_string());
                     interval_values.clear();
                     prefix_sum.clear();
                     current_chromosome = chromosome.to_string();
@@ -300,7 +299,7 @@ fn main() -> io::Result<()> {
                         out.write(&record).unwrap();
                     }
                 } else {
-                    eprintln!("Warning: Couldn't find mappability scores for chromosome {}, start {}, end {}: Excluding by default.", chromosome.to_string(),start,end);
+                    eprintln!("chr{}:{}-{} has no intersecting values, excluding.", chromosome.to_string(),start,end);
                 }
             }
         }
