@@ -13,3 +13,7 @@
 This runs the snakemake pipeline using parameters specified in params.yaml on 8 cores, with up to 2 rules running at a time.
 
 Input files from the specified input directory are processed into the specified output directory. Blacklist and secondary input files for finaletoolkit go in the supplementary directory.
+
+`snakemake --profile slurm_profile`
+
+This runs the snakemake pipeline in accordance to paramaters set in slurm_profile/config.yaml. In the sample config.yaml given in this repository, this would create a slurm submission that allows for up to 2GB per snakemake job, up to 4 jobs running in parallel, and up to 8 cores per job. 
