@@ -6,4 +6,4 @@ default-resources:
   slurm_partition: "RM-shared"
   mem_mb: 2000 # Up to 2GB per job
   runtime: 2 # Up to 2 minutes per job
-  cpus_per_task:4 # Up to 8 cores per job
+  cpus_per_task: 4 # Up to 8 cores per job
