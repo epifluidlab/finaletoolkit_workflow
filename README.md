@@ -3,9 +3,9 @@
 ## Extract epigenomic features from several files in a folder 
 
 
-* Done: Blacklisting regions (midpoints), mapq score filtering, mappability filtering, BED/BAM/CRAM compatability, parallelization, Finaletoolkit frag-length-bins, frag-length-intervals, coverage, end-motifs, interval-end-motifs, mds, interval-mds, wps, adjust-wps, gap-bed, delfi, cleavage-profile, slurm
+* Done: Blacklisting regions (midpoints), mapq score filtering, mappability filtering, BED/BAM/CRAM compatability, parallelization, Finaletoolkit frag-length-bins, frag-length-intervals, coverage, end-motifs, interval-end-motifs, mds, interval-mds, wps, adjust-wps, gap-bed, delfi, cleavage-profile, agg-bw slurm
 
-* Todo: agg-bw
+* Todo: None?
 
 ## Example usage
 `snakemake --configfile params.yaml -c8 -j 2`
