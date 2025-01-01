@@ -203,8 +203,6 @@ rule all:
         expand(blacklist+"{endings}", endings=['.gz','.gz.tbi']) if blk and not blk.endswith(".gz") else [],
 
         # Finale Toolkit outputs
-
-
         # (BED)
         io(["gz.frag_length_bins.tsv", "gz.frag_length_bins.png"], sample_bed, frag_length_bins),
         io(["gz.frag_length_intervals.bed"], sample_bed, frag_length_intervals),
@@ -246,7 +244,7 @@ rule all:
         io(["cram.cleavage_profile.bw"], sample_cram, cleavage_profile),
         io(["cram.agg_bw.wig"], sample_cram, agg_bw),
 
-# STEP 0: Compress and index the blacklist file if it exists
+# STEP 1: Compress and index the blacklist file, just in case
 rule blacklist:
     input: 
         blacklist
@@ -434,7 +432,7 @@ rule blacklist_bed:
             rm -f {input.tbi}
         fi
         """
-
+# -U flag is very vague but it does some sort of blacklisting...
 rule blacklist_bam:
     input:
         bam=rules.filter_bam_mappability.output.bam,
@@ -452,7 +450,7 @@ rule blacklist_bam:
             mv {input.bam} {output.bam}
             mv {input.bai} {output.bai}
         else
-            samtools view -b -L {params.blacklist} -@ {threads} {input.bam} > {output.bam}
+            samtools view -b -U {params.blacklist} -@ {threads} {input.bam} > {output.bam}
             samtools index {output.bam}
             rm -f {input.bam}
             rm -f {input.bai}
@@ -476,14 +474,14 @@ rule blacklist_cram:
             mv {input.cram} {output.cram}
             mv {input.crai} {output.crai}
         else
-            samtools view -b -L {params.blacklist} -@ {threads} {input.cram} > {output.cram}
+            samtools view -b -U {params.blacklist} -@ {threads} {input.cram} > {output.cram}
             samtools index {output.cram}
             rm -f {input.cram}
             rm -f {input.crai}
         fi
         """
 
-# STEP 3: Finaletoolkit commands. Using "is not None" to avoid falsy values accidentaly bypassing flags
+# STEP 4: Finaletoolkit commands. Using "is not None" to avoid falsy values accidentaly bypassing flags
 
 rule frag_length_bins:
     input:
