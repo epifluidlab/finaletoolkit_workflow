@@ -36,9 +36,10 @@ blk = cnfg("blacklist", "")
 blacklist = cmb(sup_dir,blk)
 mappability_file = cnfg("mappability_file", None)
 mappability_threshold = cnfg("mappability_threshold", 0)
+max_len = cnfg("max_read_length",(1 << 31) - 1) # 32 bit max
+min_len = cnfg("min_read_length", 0)
 
 # Finale Toolkit parameters
-
 # frag-length-bins
 frag_length_bins = cnfg("frag_length_bins", False)
 frag_length_bins_mapq = cnfg("frag_length_bins_mapq", None)
@@ -161,16 +162,19 @@ agg_bw_median_window_size = cnfg("agg_bw_median_window_size", None)
 agg_bw_mean = cnfg("agg_bw_mean", False)
 
 if (adjust_wps and not wps):
-    raise SystemExit("wps is required to run adjust-wps")
+    raise SystemExit("wps is required to run adjust-wps.")
+
+if (max_len < min_len):
+    raise SystemExit("Minimum read length must be smaller than the maximum read length.")
 
 if (mds and not end_motifs):
-    raise SystemExit("end-motifs is required to run mds")
+    raise SystemExit("end-motifs is required to run mds.")
 
 if (interval_mds and not interval_end_motifs):
-    raise SystemExit("interval-end-motifs is required to run interval-mds")
+    raise SystemExit("interval-end-motifs is required to run interval-mds.")
 
 if (agg_bw and not cleavage_profile):
-    raise SystemExit("cleavage-profile is required to run agg-bw")
+    raise SystemExit("cleavage-profile is required to run agg-bw.")
 
 if not os.path.exists(blacklist):
     raise SystemExit(f"Blacklist file not found: {blacklist}. The blacklist file must be in the supplement directory.")
@@ -275,15 +279,17 @@ rule filter_bed_mapq:
         tbi=cmb(out_dir, "{sample}.1.gz.tbi")
     threads: 4 
     params:
-        mapq=mapq
+        mapq=mapq,
+        min_len=min_len,
+        max_len=max_len
     shell:        
         """
         if [[ "{params.mapq}" != "0" ]]; then
             # MAPQ score will either be on the 4th or 5th column
             if [[ "$(zcat {input.raw_bed} | head -n 2 | tail -n 1 | awk '{{print $4}}')" =~ ^[0-9]+$ ]]; then
-                zcat {input.raw_bed} | awk -F '\\t' '$4 >= {params.mapq}' | bgzip -c -@ {threads} > {output.bed}
+                zcat {input.raw_bed} | awk -F '\\t' '($3 - $2) >= {params.min_len} && ($3 - $2) <= {params.max_len} && $4 >= {params.mapq}' | bgzip -c -@ {threads} > {output.bed}
             else 
-                zcat {input.raw_bed} | awk -F '\\t' '$5 >= {params.mapq}' | bgzip -c -@ {threads} > {output.bed}
+                zcat {input.raw_bed} | awk -F '\\t' '($3 - $2) >= {params.min_len} && ($3 - $2) <= {params.max_len} && $5 >= {params.mapq}' | bgzip -c -@ {threads} > {output.bed}
             fi
             tabix -p bed {output.bed}
         else 
@@ -302,11 +308,10 @@ rule filter_bam_mapq:
         bam=cmb(out_dir, "{sample}.1.bam"),
         bai=cmb(out_dir, "{sample}.1.bam.bai")
     threads: 4
-    params:
-        mapq=mapq
+
     run:
         if mapq > 0:
-            shell(f"samtools view -b -q {mapq} -@ {threads} {input.raw_bam} > {output.bam}")
+            shell(f"samtools view -b -e 'length(seq)>={min_len} && length(seq)<={max_len}' -q {mapq} -@ {threads} {input.raw_bam} > {output.bam}")
             shell(f"samtools index {output.bam}")
         else:
             shell(f"cp {input.raw_bam} {output.bam}")
@@ -323,7 +328,7 @@ rule filter_cram_mapq:
     threads: 4
     run:
         if mapq > 0:
-            shell(f"samtools view -b -q {mapq} -@ {threads} {input.raw_cram} > {output.cram}")
+            shell(f"samtools view -b -e 'length(seq)>={min_len} && length(seq)<={max_len}' -q {mapq} -@ {threads} {input.raw_cram} > {output.cram}")
             shell(f"samtools index {output.cram}")
         else:
             shell(f"cp {input.raw_cram} {output.cram}")
