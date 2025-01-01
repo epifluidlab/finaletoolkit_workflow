@@ -32,7 +32,8 @@ in_dir = cnfg("input_dir", "input")
 sup_dir = cnfg("supplement_dir", "supplement") # Should contain interval, blacklist, .chrom.sizes, .2bit, and other files that supplement the input files
 
 mapq = int(cnfg("mapq", 0))
-blacklist = cnfg("blacklist", None)
+blk = cnfg("blacklist", "")
+blacklist = cmb(sup_dir,blk)
 mappability_file = cnfg("mappability_file", None)
 mappability_threshold = cnfg("mappability_threshold", 0)
 
@@ -153,6 +154,12 @@ cleavage_profile_left = cnfg("cleavage_profile_left", 0)
 cleavage_profile_right = cnfg("cleavage_profile_right", 0)
 cleavage_profile_workers = cnfg("cleavage_profile_workers", 1)
 
+# agg-bw
+agg_bw = cnfg("agg_bw", False)
+agg_bw_interval_file = cnfg("agg_bw_interval_file", None)
+agg_bw_median_window_size = cnfg("agg_bw_median_window_size", None)
+agg_bw_mean = cnfg("agg_bw_mean", False)
+
 if (adjust_wps and not wps):
     raise SystemExit("wps is required to run adjust-wps")
 
@@ -162,7 +169,13 @@ if (mds and not end_motifs):
 if (interval_mds and not interval_end_motifs):
     raise SystemExit("interval-end-motifs is required to run interval-mds")
 
-using_finaletoolkit = frag_length_bins or frag_length_intervals or coverage or end_motifs or interval_end_motifs or mds or interval_mds or wps or adjust_wps or delfi or cleavage_profile
+if (agg_bw and not cleavage_profile):
+    raise SystemExit("cleavage-profile is required to run agg-bw")
+
+if not os.path.exists(blacklist):
+    raise SystemExit(f"Blacklist file not found: {blacklist}. The blacklist file must be in the supplement directory.")
+
+using_finaletoolkit = frag_length_bins or frag_length_intervals or coverage or end_motifs or interval_end_motifs or mds or interval_mds or wps or adjust_wps or delfi or cleavage_profile or agg_bw
 
 bed_files = glob.glob(cmb(in_dir, "*.gz"))
 bam_files = glob.glob(cmb(in_dir, "*.bam"))
@@ -171,6 +184,7 @@ cram_files = glob.glob(cmb(in_dir, "*.cram"))
 sample_bed = [os.path.splitext(os.path.basename(f))[0] for f in bed_files]
 sample_bam = [os.path.splitext(os.path.basename(f))[0] for f in bam_files]
 sample_cram = [os.path.splitext(os.path.basename(f))[0] for f in cram_files]
+
 rule all:
     input:
         # BED output
@@ -180,10 +194,15 @@ rule all:
         # CRAM output
         io(["final.cram", "final.cram.crai"], sample_cram, not using_finaletoolkit),
 
-        # Finale Toolkit outputs (separate bins and intervals)
+        # Blacklist compression
+        blacklist+".tbi" if blk and blk.endswith(".gz") and not os.path.exists(blacklist + ".tbi") else [],
+        expand(blacklist+"{endings}", endings=['.gz','.gz.tbi']) if blk and not blk.endswith(".gz") else [],
+
+        # Finale Toolkit outputs
+
 
         # (BED)
-        io(["gz.frag_length_bins.tsv", "bed.gz.frag_length_bins.png"], sample_bed, frag_length_bins),
+        io(["gz.frag_length_bins.tsv", "gz.frag_length_bins.png"], sample_bed, frag_length_bins),
         io(["gz.frag_length_intervals.bed"], sample_bed, frag_length_intervals),
         io(["gz.coverage.bed"], sample_bed, coverage),
         io(["gz.end_motifs.tsv"], sample_bed, end_motifs),
@@ -194,7 +213,7 @@ rule all:
         io(["gz.adjust_wps.bw"], sample_bed, adjust_wps),
         io(["gz.delfi.bed"], sample_bed, delfi),
         io(["gz.cleavage_profile.bw"], sample_bed, cleavage_profile),
-
+        io(["gz.agg_bw.wig"], sample_bed, agg_bw),
         # (BAM)
         io(["bam.frag_length_bins.tsv","bam.frag_length_bins.png"], sample_bam, frag_length_bins),
         io(["bam.frag_length_intervals.bed"], sample_bam, frag_length_intervals),
@@ -207,6 +226,8 @@ rule all:
         io(["bam.adjust_wps.bw"], sample_bam, adjust_wps),
         io(["bam.delfi.bed"], sample_bam, delfi),
         io(["bam.cleavage_profile.bw"], sample_bam, cleavage_profile),
+        io(["bam.agg_bw.wig"], sample_bam, agg_bw),
+
         # (CRAM)
         io(["cram.frag_length_bins.tsv","cram.frag_length_bins.png"], sample_cram, frag_length_bins),
         io(["cram.frag_length_intervals.bed"], sample_cram, frag_length_intervals),
@@ -219,27 +240,30 @@ rule all:
         io(["cram.adjust_wps.bw"], sample_cram, adjust_wps),
         io(["cram.delfi.bed"], sample_cram, delfi),
         io(["cram.cleavage_profile.bw"], sample_cram, cleavage_profile),
-# STEP 0: Performance improvements by compressing and indexing the blacklist file
-if blacklist:
-    blacklist_input_path = cmb(sup_dir, blacklist)
+        io(["cram.agg_bw.wig"], sample_cram, agg_bw),
 
-    if not os.path.exists(blacklist_input_path):
-        raise FileNotFoundError(f"Blacklist file not found: {blacklist_input_path}. The blacklist file must be in the supplement directory.")
-
-    if blacklist.endswith(".gz"):
-        blacklist_output_gz_path = blacklist_input_path
-        blacklist_output_tbi_path = blacklist_output_gz_path + ".tbi"
-        if not os.path.exists(blacklist_output_tbi_path):
-            shell(f"tabix -p bed '{blacklist_output_gz_path}'")
-    else:
-        blacklist_output_gz_path = cmb(sup_dir, blacklist + ".gz")
-        blacklist_output_tbi_path = blacklist_output_gz_path + ".tbi"
-        if not os.path.exists(blacklist_output_gz_path):
-            print(blacklist_input_path,blacklist_output_gz_path)
-            shell(f"bgzip -@ 4 -c {blacklist_input_path} > {blacklist_output_gz_path}")
-        if not os.path.exists(blacklist_output_tbi_path):
-            shell(f"tabix -p bed '{blacklist_output_gz_path}'")
-    blacklist = blacklist_output_gz_path
+# STEP 0: Compress and index the blacklist file if it exists
+rule blacklist:
+    input: 
+        blacklist
+    output:
+        gz=blacklist+".gz",
+        tbi=blacklist+".gz.tbi"
+    threads: 4
+    shell:
+        """
+            bgzip -@ {threads} -c {input} > {output.gz}
+            tabix -p bed {output.gz}
+        """
+rule index:
+    input: 
+        blacklist
+    output:
+        tbi=blacklist+".tbi"
+    shell:
+        """
+            tabix -p bed {input}
+        """
 
 # STEP 1: Run filtering based on mapq scores
 rule filter_bed_mapq:
@@ -250,13 +274,25 @@ rule filter_bed_mapq:
         bed=cmb(out_dir, "{sample}.1.gz"),
         tbi=cmb(out_dir, "{sample}.1.gz.tbi")
     threads: 4 
-    run:
-        if mapq > 0:
-            shell(f"zcat {input.raw_bed} | awk -F '\\t' '$4 >= {mapq}' | bgzip -c -@ {threads} > {output.bed}")
-            shell(f"tabix -p bed {output.bed}")
-        else:
-            shell(f"cp {input.raw_bed} {output.bed}")
-            shell(f"cp {input.raw_tbi} {output.tbi}")
+    params:
+        mapq=mapq
+    shell:        
+        """
+        if [[ "{params.mapq}" != "0" ]]; then
+            # MAPQ score will either be on the 4th or 5th column
+            if [[ "$(zcat {input.raw_bed} | head -n 2 | tail -n 1 | awk '{{print $4}}')" =~ ^[0-9]+$ ]]; then
+                zcat {input.raw_bed} | awk -F '\\t' '$4 >= {params.mapq}' | bgzip -c -@ {threads} > {output.bed}
+            else 
+                zcat {input.raw_bed} | awk -F '\\t' '$5 >= {params.mapq}' | bgzip -c -@ {threads} > {output.bed}
+            fi
+            tabix -p bed {output.bed}
+        else 
+            cp {input.raw_bed} {output.bed}
+            cp {input.raw_tbi} {output.tbi}
+        fi
+        """
+
+
 
 rule filter_bam_mapq:
     input:
@@ -266,6 +302,8 @@ rule filter_bam_mapq:
         bam=cmb(out_dir, "{sample}.1.bam"),
         bai=cmb(out_dir, "{sample}.1.bam.bai")
     threads: 4
+    params:
+        mapq=mapq
     run:
         if mapq > 0:
             shell(f"samtools view -b -q {mapq} -@ {threads} {input.raw_bam} > {output.bam}")
@@ -302,14 +340,16 @@ rule filter_bed_mappability:
     params:
         threshold=mappability_threshold,
         bigwig=cmb(sup_dir,mappability_file) if mappability_file is not None else None
+    threads: 4
     shell:
         """
         if [[ "{params.bigwig}" != "None" ]]; then
-            zcat {input.bed} > temp.bed
-            bedMappabilityFilter --bigwig {params.bigwig} --bed temp.bed --output filtered.bed --minimum-mappability {params.threshold}
-            bgzip -@ {threads} -c filtered.bed > {output.bed}
+            zcat {input.bed} > {output.bed}x
+            bedMappabilityFilter --bigwig {params.bigwig} --bed {output.bed}x --output {output.bed}z --minimum-mappability {params.threshold}
+            bgzip -@ {threads} -c {output.bed}z > {output.bed}
             tabix -p bed {output.bed}
-            rm temp.bed
+            rm -f {output.bed}x
+            rm -f {output.bed}z
         else
             mv {input.bed} {output.bed}
             mv {input.tbi} {output.tbi}
@@ -332,8 +372,8 @@ rule filter_bam_mappability:
         if [[ "{params.bigwig}" != "None" ]]; then
             bedMappabilityFilter --bigwig {params.bigwig} --bam {input.bam} --output {output.bam} --minimum-mappability {params.threshold} --threads {threads}
             samtools index {output.bam}
-            rm {input.bam}
-            rm {input.bai}
+            rm -f {input.bam}
+            rm -f {input.bai}
         else
             mv {input.bam} {output.bam}
             mv {input.bai} {output.bai}
@@ -356,8 +396,8 @@ rule filter_cram_mappability:
         if [[ "{params.bigwig}" != "None" ]]; then
             bedMappabilityFilter --bigwig {params.bigwig} --bam {input.cram} --output {output.cram} --minimum-mappability {params.threshold} --threads {threads}
             samtools index {output.cram}
-            rm {input.cram}
-            rm {input.crai}
+            rm -f {input.cram}
+            rm -f {input.crai}
         else
             mv {input.cram} {output.cram}
             mv {input.crai} {output.crai}
@@ -373,18 +413,20 @@ rule blacklist_bed:
         bed=cmb(out_dir, "{sample}.final.gz"),
         tbi=cmb(out_dir, "{sample}.final.gz.tbi"),
     params:
-        blacklist=blacklist
+        blacklist=blacklist if blacklist.endswith(".gz") else blacklist+".gz",
+        blk=blk
     threads: 4
     shell:
         """
-        if [[ "{params.blacklist}" == "None" ]]; then
+        if [[ "{params.blk}" == "" ]]; then
             mv {input.bed} {output.bed}
             mv {input.tbi} {output.tbi}
         else
-            bedtools subtract -a {input.bed} -b {params.blacklist} | bgzip -@ {threads} > {output.bed}
+            # -f 0.5 only removes intervals from the input file if the blacklist regions touch its midpoint
+            bedtools subtract -a {input.bed} -b {params.blacklist} -f 0.5 | bgzip -@ {threads} > {output.bed}
             tabix -p bed {output.bed}
-            rm {input.bed}
-            rm {input.tbi}
+            rm -f {input.bed}
+            rm -f {input.tbi}
         fi
         """
 
@@ -396,18 +438,19 @@ rule blacklist_bam:
         bam=cmb(out_dir, "{sample}.final.bam"),
         bai=cmb(out_dir, "{sample}.final.bam.bai"),
     params:
-        blacklist=blacklist
+        blacklist=blacklist if blacklist.endswith(".gz") else blacklist+".gz",
+        blk=blk
     threads: 4
     shell:
         """
-        if [[ "{params.blacklist}" == "None" ]]; then
+        if [[ "{params.blk}" == "" ]]; then
             mv {input.bam} {output.bam}
             mv {input.bai} {output.bai}
         else
             samtools view -b -L {params.blacklist} -@ {threads} {input.bam} > {output.bam}
             samtools index {output.bam}
-            rm {input.bam}
-            rm {input.bai}
+            rm -f {input.bam}
+            rm -f {input.bai}
         fi
         """
 
@@ -419,18 +462,19 @@ rule blacklist_cram:
         cram=cmb(out_dir, "{sample}.final.cram"),
         crai=cmb(out_dir, "{sample}.final.cram.crai"),
     params:
-        blacklist=blacklist
+        blacklist=blacklist if blacklist.endswith(".gz") else blacklist+".gz",
+        blk=blk
     threads: 4 
     shell:
         """
-        if [[ "{params.blacklist}" == "None" ]]; then
+        if [[ "{params.blk}" == "" ]]; then
             mv {input.cram} {output.cram}
             mv {input.crai} {output.crai}
         else
             samtools view -b -L {params.blacklist} -@ {threads} {input.cram} > {output.cram}
             samtools index {output.cram}
-            rm {input.cram}
-            rm {input.crai}
+            rm -f {input.cram}
+            rm -f {input.crai}
         fi
         """
 
@@ -442,6 +486,7 @@ rule frag_length_bins:
     output:
         tsv=cmb(out_dir, "{sample}.{ext}.frag_length_bins.tsv"),
         png=cmb(out_dir, "{sample}.{ext}.frag_length_bins.png")
+    threads: 1
     run:
         command_parts = [f"finaletoolkit frag-length-bins {input}"]
         if frag_length_bins_mapq is not None:
@@ -463,7 +508,7 @@ rule frag_length_bins:
         command_parts.append(f"-o {output.tsv}")
         command_parts.append(f"--histogram-path {output.png} -v")
         command = " ".join(command_parts)
-        print("Running ", command)
+        print("Running: ", command)
         shell(f"{command}")
 
 rule frag_length_intervals:
@@ -472,6 +517,7 @@ rule frag_length_intervals:
         intervals=cmb(sup_dir, f"{frag_length_interval_file}")
     output:
         cmb(out_dir, "{sample}.{ext}.frag_length_intervals.bed")
+    threads: frag_length_intervals_workers
     run:
         command_parts = [
             "finaletoolkit",
@@ -497,7 +543,7 @@ rule frag_length_intervals:
         command_parts.append(f"-o {output} -v")
 
         command = " ".join(command_parts)
-        print("Running ", command)
+        print("Running: ", command)
         shell(f"{command}")
 
 rule coverage:
@@ -506,6 +552,7 @@ rule coverage:
         intervals=cmb(sup_dir, f"{coverage_interval_file}")
     output:
         cmb(out_dir, "{sample}.{ext}.coverage.bed")
+    threads: coverage_workers
     run:
         command_parts = [
             "finaletoolkit",
@@ -536,7 +583,7 @@ rule coverage:
         command_parts.append(f"-o {output} -v")
 
         command = " ".join(command_parts)
-        print("Running ", command)
+        print("Running: ", command)
         shell(f"{command}")
 
 rule end_motifs:
@@ -545,6 +592,7 @@ rule end_motifs:
         refseq=cmb(sup_dir, f"{end_motifs_refseq_file}")
     output:
         cmb(out_dir, "{sample}.{ext}.end_motifs.tsv")
+    threads: end_motifs_workers
     run:
         command_parts = [
             "finaletoolkit",
@@ -572,7 +620,7 @@ rule end_motifs:
         command_parts.append(f"-o {output} -v")
 
         command = " ".join(command_parts)
-        print("Running ", command)
+        print("Running: ", command)
         shell(f"{command}")
 
 rule interval_end_motifs:
@@ -582,6 +630,7 @@ rule interval_end_motifs:
         intervals=cmb(sup_dir, f"{interval_end_motifs_interval_file}")
     output:
         cmb(out_dir, "{sample}.{ext}.interval_end_motifs.tsv")
+    threads: interval_end_motifs_workers
     run:
         command_parts = [
             "finaletoolkit",
@@ -610,7 +659,7 @@ rule interval_end_motifs:
         command_parts.append(f"-o {output} -v")
 
         command = " ".join(command_parts)
-        print("Running ", command)
+        print("Running: ", command)
         shell(f"{command}")
 
 rule mds:
@@ -631,7 +680,7 @@ rule mds:
 
         command_parts.append(f"> {output}")
         command = " ".join(command_parts)
-        print("Running ", command)
+        print("Running: ", command)
         shell(f"{command}")
 
 rule interval_mds:
@@ -652,7 +701,7 @@ rule interval_mds:
             command_parts.append(f"--header {interval_mds_header}")
 
         command = " ".join(command_parts)
-        print("Running ", command)
+        print("Running: ", command)
         shell(f"{command}")
 
 rule wps:
@@ -661,6 +710,7 @@ rule wps:
         site_bed=cmb(sup_dir, f"{wps_site_bed}")
     output:
         cmb(out_dir, "{sample}.{ext}.wps.bw")
+    threads: wps_workers
     run:
         command_parts = ["finaletoolkit", "wps", input.data, input.site_bed]
         if wps_chrom_sizes is not None:
@@ -679,7 +729,7 @@ rule wps:
             command_parts.append(f"-w {wps_workers}")
         command_parts.append(f"-o {output} -v")
         command = " ".join(command_parts)
-        print("Running ", command)
+        print("Running: ", command)
         shell(f"{command}")
 
 rule adjust_wps:
@@ -689,6 +739,7 @@ rule adjust_wps:
         chrom_sizes=cmb(sup_dir, f"{adjust_wps_chrom_sizes}")
     output:
         cmb(out_dir, "{sample}.{ext}.adjust_wps.bw")
+    threads: adjust_wps_workers
     run:
         command_parts = [
             "finaletoolkit",
@@ -718,7 +769,7 @@ rule adjust_wps:
                 command_parts.append(f"--edge-size {adjust_wps_edge_size}")
         command_parts.append(f"-o {output} -v")
         command = " ".join(command_parts)
-        print("Running ", command)
+        print("Running: ", command)
         shell(f"{command}")
 
 rule delfi:
@@ -729,6 +780,7 @@ rule delfi:
         bins_file=cmb(sup_dir, f"{delfi_bins_file}"),
     output:
         cmb(out_dir, "{sample}.{ext}.delfi.bed")
+    threads: delfi_workers
     run:
         input_file = input.input_file
         if input_file.endswith(".gz"):
@@ -771,7 +823,7 @@ rule delfi:
         command_parts.append(f"-o {output} -v")
 
         command = " ".join(command_parts)
-        print("Running ", command)
+        print("Running: ", command)
         shell(f"{command}")
         if input_file.endswith(".gz"): # Rename it again so that snakemake doesn't lose track
             shell(f"mv {input_file} {input.input_file} && mv {input_file}.tbi {input.input_file}.tbi")
@@ -782,6 +834,7 @@ rule cleavage_profile:
         intervals=cmb(sup_dir, f"{cleavage_profile_interval_file}")
     output:
         cmb(out_dir, "{sample}.{ext}.cleavage_profile.bw")
+    threads: cleavage_profile_workers
     run:
         command_parts = [
             "finaletoolkit",
@@ -806,5 +859,31 @@ rule cleavage_profile:
             command_parts.append(f"-w {cleavage_profile_workers}")
         command_parts.append(f"-o {output} -v")
         command = " ".join(command_parts)
-        print("Running ", command)
+        print("Running: ", command)
+        shell(f"{command}")
+rule agg_bw:
+    input:
+        data=lambda wildcards: cmb(out_dir, f"{wildcards.sample}.{wildcards.ext}.cleavage_profile.bw"),
+        intervals=cmb(sup_dir, f"{agg_bw_interval_file}")
+    output:
+        cmb(out_dir, "{sample}.{ext}.agg_bw.wig")
+    threads: 1
+    run:
+        command_parts = [
+            "finaletoolkit",
+            "agg-bw",
+            input.data,
+            input.intervals,
+        ]
+
+        if output:
+            command_parts.append(f"-o {output}")
+        if agg_bw_median_window_size is not None:
+            command_parts.append(f"-m {agg_bw_median_window_size}")
+        if agg_bw_mean:
+            command_parts.append("-a")
+        command_parts.append("-v")
+
+        command = " ".join(command_parts)
+        print("Running: ", command)
         shell(f"{command}")
