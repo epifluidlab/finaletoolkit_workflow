@@ -3,7 +3,7 @@
 ## Extract epigenomic features from several files in a folder 
 
 
-* Done: Blacklisting regions (midpoints), mapq score filtering, mappability filtering, BED/BAM/CRAM compatability, parallelization, Finaletoolkit frag-length-bins, frag-length-intervals, coverage, end-motifs, interval-end-motifs, mds, interval-mds, wps, adjust-wps, gap-bed, delfi, cleavage-profile, agg-bw slurm
+* Done: Blacklisting regions (midpoints), mapq score filtering, mappability filtering, BED/BAM/CRAM compatability, parallelization, slurm, read length filtering, Finaletoolkit frag-length-bins, frag-length-intervals, coverage, end-motifs, interval-end-motifs, mds, interval-mds, wps, adjust-wps, gap-bed, delfi, cleavage-profile, agg-bw
 
 * Todo: None?
 
