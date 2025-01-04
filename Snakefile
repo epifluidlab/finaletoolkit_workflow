@@ -3,10 +3,9 @@ import glob
 import subprocess
 
 cmb = os.path.join
+spl = os.path.splitext
 cnfg = config.get
 
-def io(endings, samples, condition):
-    return expand(cmb(out_dir, "{sample}.{ending}"), sample=samples, ending=endings) if condition else []
 
 def check_tools():
     tools = {
@@ -30,14 +29,18 @@ check_tools()
 out_dir = cnfg("output_dir", "output")
 in_dir = cnfg("input_dir", "input")
 sup_dir = cnfg("supplement_dir", "supplement") # Should contain interval, blacklist, .chrom.sizes, .2bit, and other files that supplement the input files
+blk = cnfg("filter_file_blacklist", None)
 
-mapq = int(cnfg("mapq", 0))
-blk = cnfg("blacklist", "")
-blacklist = cmb(sup_dir,blk)
 mappability_file = cnfg("mappability_file", None)
 mappability_threshold = cnfg("mappability_threshold", 0)
-max_len = cnfg("max_read_length",(1 << 31) - 1) # 32 bit max
-min_len = cnfg("min_read_length", 0)
+
+filter_file_quality = cnfg("filter_file_quality", 0)
+filter_file_min_length = cnfg("filter_file_min_length", 0)
+filter_file_max_length = cnfg("filter_file_max_length", (1 << 31) - 1)
+filter_file_blacklist = cmb(sup_dir, blk)
+filter_file_whitelist = cnfg("filter_file_whitelist", "whitelist.bed")
+filter_file_intersect_policy = cnfg("filter_file_intersect_policy", "midpoint")
+filter_file_workers = cnfg("filter_file_workers", 8)
 
 # Finale Toolkit parameters
 # frag-length-bins
@@ -53,7 +56,7 @@ frag_length_bins_end = cnfg("frag_length_bins_end", None)
 
 # frag-length-intervals
 frag_length_intervals = cnfg("frag_length_intervals", False)
-frag_length_interval_file = cnfg("frag_length_interval_file", False)
+frag_length_interval_file = cnfg("frag_length_interval_file", "")
 frag_length_intervals_mapq = cnfg("frag_length_intervals_mapq", None)
 frag_length_intervals_policy = cnfg("frag_length_intervals_policy", None)
 frag_length_intervals_min_len = cnfg("frag_length_intervals_min_len", None)
@@ -62,7 +65,7 @@ frag_length_intervals_workers = cnfg("frag_length_intervals_workers", 1)
 
 # coverage
 coverage = cnfg("coverage", False)
-coverage_interval_file = cnfg("coverage_interval_file", False)
+coverage_interval_file = cnfg("coverage_interval_file", "")
 coverage_mapq = cnfg("coverage_mapq", None)
 coverage_intersect_policy = cnfg("coverage_intersect_policy", None)
 coverage_min_len = cnfg("coverage_min_len", None)
@@ -85,7 +88,7 @@ end_motifs_workers = cnfg("end_motifs_workers", 1)
 # interval-end-motifs
 interval_end_motifs = cnfg("interval_end_motifs", False)
 interval_end_motifs_refseq_file = cnfg("interval_end_motifs_refseq_file", None)
-interval_end_motifs_interval_file = cnfg("interval_end_motifs_interval_file", None)
+interval_end_motifs_interval_file = cnfg("interval_end_motifs_interval_file", "")
 interval_end_motifs_kmer_length = cnfg("interval_end_motifs_kmer_length", 4)
 interval_end_motifs_min_len = cnfg("interval_end_motifs_min_len", None)
 interval_end_motifs_max_len = cnfg("interval_end_motifs_max_len", None)
@@ -107,7 +110,7 @@ interval_mds_header = cnfg("interval_mds_header", 0)
 # wps
 wps = cnfg("wps", False)
 wps_chrom_sizes = cnfg("wps_chrom_sizes", None)
-wps_site_bed = cnfg("wps_site_bed", False)
+wps_site_bed = cnfg("wps_site_bed", "")
 wps_interval_size = cnfg("wps_interval_size", 5000)
 wps_window_size = cnfg("wps_window_size", 120)
 wps_min_len = cnfg("wps_min_len", 120)
@@ -117,7 +120,7 @@ wps_workers = cnfg("wps_workers", 1)
 
 # adjust-wps
 adjust_wps = cnfg("adjust_wps", False)
-adjust_wps_interval_file = cnfg("adjust_wps_interval_file", False)
+adjust_wps_interval_file = cnfg("adjust_wps_interval_file", "")
 adjust_wps_chrom_sizes = cnfg("adjust_wps_chrom_sizes", False)
 adjust_wps_interval_size = cnfg("adjust_wps_interval_size", 5000)
 adjust_wps_median_window_size = cnfg("adjust_wps_median_window_size", 1000)
@@ -136,7 +139,7 @@ delfi_gap_file = cnfg("delfi_gap_file", None)
 delfi_gap_reference_genome = cnfg("delfi_gap_reference_genome", "hg19")
 delfi_chrom_sizes = cnfg("delfi_chrom_sizes", False)
 delfi_reference_file = cnfg("delfi_reference_file", False)
-delfi_bins_file = cnfg("delfi_bins_file", False)
+delfi_bins_file = cnfg("delfi_bins_file", "")
 delfi_no_gc_correct = cnfg("delfi_no_gc_correct", True)
 delfi_keep_nocov = cnfg("delfi_keep_nocov", True)
 delfi_no_merge_bins = cnfg("delfi_no_merge_bins", True)
@@ -146,7 +149,7 @@ delfi_workers = cnfg("delfi_workers", 1)
 
 # cleavage-profile
 cleavage_profile = cnfg("cleavage_profile", False)
-cleavage_profile_interval_file = cnfg("cleavage_profile_interval_file", None)
+cleavage_profile_interval_file = cnfg("cleavage_profile_interval_file", "")
 cleavage_profile_chrom_sizes = cnfg("cleavage_profile_chrom_sizes", None)
 cleavage_profile_min_len = cnfg("cleavage_profile_min_len", None)
 cleavage_profile_max_len = cnfg("cleavage_profile_max_len", None)
@@ -157,14 +160,14 @@ cleavage_profile_workers = cnfg("cleavage_profile_workers", 1)
 
 # agg-bw
 agg_bw = cnfg("agg_bw", False)
-agg_bw_interval_file = cnfg("agg_bw_interval_file", None)
+agg_bw_interval_file = cnfg("agg_bw_interval_file", "")
 agg_bw_median_window_size = cnfg("agg_bw_median_window_size", None)
 agg_bw_mean = cnfg("agg_bw_mean", False)
 
 if (adjust_wps and not wps):
     raise SystemExit("wps is required to run adjust-wps.")
 
-if (max_len < min_len):
+if (filter_file_max_length < filter_file_min_length):
     raise SystemExit("Minimum read length must be smaller than the maximum read length.")
 
 if (mds and not end_motifs):
@@ -176,8 +179,8 @@ if (interval_mds and not interval_end_motifs):
 if (agg_bw and not cleavage_profile):
     raise SystemExit("cleavage-profile is required to run agg-bw.")
 
-if not os.path.exists(blacklist):
-    raise SystemExit(f"Blacklist file not found: {blacklist}. The blacklist file must be in the supplement directory.")
+if not os.path.exists(filter_file_blacklist):
+    raise SystemExit(f"Blacklist file not found: {filter_file_blacklist}. The blacklist file must be in the supplement directory.")
 
 using_finaletoolkit = frag_length_bins or frag_length_intervals or coverage or end_motifs or interval_end_motifs or mds or interval_mds or wps or adjust_wps or delfi or cleavage_profile or agg_bw
 
@@ -185,22 +188,32 @@ bed_files = glob.glob(cmb(in_dir, "*.gz"))
 bam_files = glob.glob(cmb(in_dir, "*.bam"))
 cram_files = glob.glob(cmb(in_dir, "*.cram"))
 
-sample_bed = [os.path.splitext(os.path.basename(f))[0] for f in bed_files]
-sample_bam = [os.path.splitext(os.path.basename(f))[0] for f in bam_files]
-sample_cram = [os.path.splitext(os.path.basename(f))[0] for f in cram_files]
+sample_bed = [spl(os.path.basename(f))[0] for f in bed_files]
+sample_bam = [spl(os.path.basename(f))[0] for f in bam_files]
+sample_cram = [spl(os.path.basename(f))[0] for f in cram_files]
 
+sample_interval = [frag_length_interval_file, coverage_interval_file, cleavage_profile_interval_file, wps_site_bed, adjust_wps_interval_file, delfi_bins_file,interval_end_motifs_interval_file]
+sample_interval_bins = [spl(fp)[0] for fp in sample_interval if fp and fp.endswith(".bins")]
+sample_interval_bed = [spl(fp)[0] for fp in sample_interval if fp and fp.endswith(".bed")]
+print(sample_interval_bins,sample_interval_bed)
+def io(endings, samples, condition,dir=out_dir):
+    return expand(cmb(dir, "{sample}.{ending}"), sample=samples, ending=endings) if condition else []
 rule all:
     input:
         # BED output
-        io(["final.gz", "final.gz.tbi"], sample_bed, not using_finaletoolkit),
+        io(["final.gz"], sample_bed, not using_finaletoolkit),
         # BAM output
-        io(["final.bam", "final.bam.bai"], sample_bam, not using_finaletoolkit),
+        io(["final.bam"], sample_bam, not using_finaletoolkit),
         # CRAM output
-        io(["final.cram", "final.cram.crai"], sample_cram, not using_finaletoolkit),
+        io(["final.cram"], sample_cram, not using_finaletoolkit),
 
         # Blacklist compression
-        blacklist+".tbi" if blk and blk.endswith(".gz") and not os.path.exists(blacklist + ".tbi") else [],
-        expand(blacklist+"{endings}", endings=['.gz','.gz.tbi']) if blk and not blk.endswith(".gz") else [],
+        filter_file_blacklist+".tbi" if blk and blk.endswith(".gz") and not os.path.exists(filter_file_blacklist + ".tbi") else [],
+        expand(filter_file_blacklist+"{endings}", endings=['.gz','.gz.tbi']) if blk and not blk.endswith(".gz") else [],
+
+        # Interval file output (mappability)
+        io(["filtered.bed"], sample_interval_bed, len(sample_interval) > 0, sup_dir),
+        io(["filtered.bins"], sample_interval_bins, len(sample_interval) > 0, sup_dir),
 
         # Finale Toolkit outputs
         # (BED)
@@ -247,10 +260,10 @@ rule all:
 # STEP 1: Compress and index the blacklist file, just in case
 rule blacklist:
     input: 
-        blacklist
+        filter_file_blacklist
     output:
-        gz=blacklist+".gz",
-        tbi=blacklist+".gz.tbi"
+        gz=filter_file_blacklist+".gz",
+        tbi=filter_file_blacklist+".gz.tbi"
     threads: 4
     shell:
         """
@@ -259,229 +272,37 @@ rule blacklist:
         """
 rule index:
     input: 
-        blacklist
+        filter_file_blacklist
     output:
-        tbi=blacklist+".tbi"
+        tbi=filter_file_blacklist+".tbi"
     shell:
         """
             tabix -p bed {input}
         """
 
-# STEP 1: Run filtering based on mapq scores
-rule filter_bed_mapq:
+# STEP 2: Run filtering using filter-file
+
+rule filter_file:
     input:
-        raw_bed=cmb(in_dir, "{sample}.gz"),
-        raw_tbi=cmb(in_dir, "{sample}.gz.tbi")
+        lambda wildcards: cmb(in_dir, f"{wildcards.sample}.{wildcards.ext}")
     output:
-        bed=cmb(out_dir, "{sample}.1.gz"),
-        tbi=cmb(out_dir, "{sample}.1.gz.tbi")
-    threads: 4 
-    params:
-        mapq=mapq,
-        min_len=min_len,
-        max_len=max_len
-    shell:        
-        """
-        if [[ "{params.mapq}" != "0" ]]; then
-            # MAPQ score will either be on the 4th or 5th column
-            if [[ "$(zcat {input.raw_bed} | head -n 2 | tail -n 1 | awk '{{print $4}}')" =~ ^[0-9]+$ ]]; then
-                zcat {input.raw_bed} | awk -F '\\t' '($3 - $2) >= {params.min_len} && ($3 - $2) <= {params.max_len} && $4 >= {params.mapq}' | bgzip -c -@ {threads} > {output.bed}
-            else 
-                zcat {input.raw_bed} | awk -F '\\t' '($3 - $2) >= {params.min_len} && ($3 - $2) <= {params.max_len} && $5 >= {params.mapq}' | bgzip -c -@ {threads} > {output.bed}
-            fi
-            tabix -p bed {output.bed}
-        else 
-            cp {input.raw_bed} {output.bed}
-            cp {input.raw_tbi} {output.tbi}
-        fi
-        """
-
-
-
-rule filter_bam_mapq:
-    input:
-        raw_bam=cmb(in_dir, "{sample}.bam"),
-        raw_bai=cmb(in_dir, "{sample}.bam.bai")
-    output:
-        bam=cmb(out_dir, "{sample}.1.bam"),
-        bai=cmb(out_dir, "{sample}.1.bam.bai")
-    threads: 4
-
-    run:
-        if mapq > 0:
-            shell(f"samtools view -b -e 'length(seq)>={min_len} && length(seq)<={max_len}' -q {mapq} -@ {threads} {input.raw_bam} > {output.bam}")
-            shell(f"samtools index {output.bam}")
-        else:
-            shell(f"cp {input.raw_bam} {output.bam}")
-            shell(f"cp {input.raw_bai} {output.bai}")
-
-
-rule filter_cram_mapq:
-    input:
-        raw_cram=cmb(in_dir, "{sample}.cram"),
-        raw_crai=cmb(in_dir, "{sample}.cram.crai")
-    output:
-        cram=cmb(out_dir, "{sample}.1.cram"),
-        crai=cmb(out_dir, "{sample}.1.cram.crai")
+        cmb(out_dir, "{sample}.final.{ext}"),
     threads: 4
     run:
-        if mapq > 0:
-            shell(f"samtools view -b -e 'length(seq)>={min_len} && length(seq)<={max_len}' -q {mapq} -@ {threads} {input.raw_cram} > {output.cram}")
-            shell(f"samtools index {output.cram}")
-        else:
-            shell(f"cp {input.raw_cram} {output.cram}")
-            shell(f"cp {input.raw_crai} {output.crai}")
+        shell(f"finaletoolkit filter-file -W {filter_file_whitelist} -B {filter_file_blacklist} -o {output} -q {filter_file_quality} -min {filter_file_min_length} -max {filter_file_max_length} -p {filter_file_intersect_policy} -w {filter_file_workers} {input}")
 
-# STEP 2: Filter by mappability
-rule filter_bed_mappability:
+# STEP 3: Filter interval files using bedMappabilityFilter
+
+rule filter_mappability_bed:
     input:
-        bed=rules.filter_bed_mapq.output.bed,
-        tbi=rules.filter_bed_mapq.output.tbi
+        lambda wildcards: cmb(sup_dir, f"{wildcards.sample}.{wildcards.ext}")
     output:
-        bed=cmb(out_dir, "{sample}.2.gz"),
-        tbi=cmb(out_dir, "{sample}.2.gz.tbi")
-    params:
-        threshold=mappability_threshold,
-        bigwig=cmb(sup_dir,mappability_file) if mappability_file is not None else None
+        cmb(sup_dir, "{sample}.filtered.{ext}"),
     threads: 4
-    shell:
-        """
-        if [[ "{params.bigwig}" != "None" ]]; then
-            zcat {input.bed} > {output.bed}x
-            bedMappabilityFilter --bigwig {params.bigwig} --bed {output.bed}x --output {output.bed}z --minimum-mappability {params.threshold}
-            bgzip -@ {threads} -c {output.bed}z > {output.bed}
-            tabix -p bed {output.bed}
-            rm -f {output.bed}x
-            rm -f {output.bed}z
-        else
-            mv {input.bed} {output.bed}
-            mv {input.tbi} {output.tbi}
-        fi
-        """
+    run:
+        shell(f"bedMappabilityFilter --bigwig {cmb(sup_dir,mappability_file)} --bed {input} --output {output} --minimum-mappability {mappability_threshold} --threads {threads}")
 
-rule filter_bam_mappability:
-    input:
-        bam=rules.filter_bam_mapq.output.bam,
-        bai=rules.filter_bam_mapq.output.bai
-    output:
-        bam=cmb(out_dir, "{sample}.2.bam"),
-        bai=cmb(out_dir, "{sample}.2.bam.bai")
-    threads: 8
-    params:
-        threshold=mappability_threshold,
-        bigwig=cmb(sup_dir,mappability_file) if mappability_file is not None else None
-    shell:
-        """
-        if [[ "{params.bigwig}" != "None" ]]; then
-            bedMappabilityFilter --bigwig {params.bigwig} --bam {input.bam} --output {output.bam} --minimum-mappability {params.threshold} --threads {threads}
-            samtools index {output.bam}
-            rm -f {input.bam}
-            rm -f {input.bai}
-        else
-            mv {input.bam} {output.bam}
-            mv {input.bai} {output.bai}
-        fi
-        """
-
-rule filter_cram_mappability:
-    input:
-        cram=rules.filter_cram_mapq.output.cram,
-        crai=rules.filter_cram_mapq.output.crai
-    output:
-        cram=cmb(out_dir, "{sample}.2.cram"),
-        crai=cmb(out_dir, "{sample}.2.cram.crai")
-    threads: 8
-    params:
-        threshold=mappability_threshold,
-        bigwig=cmb(sup_dir,mappability_file) if mappability_file is not None else None
-    shell:
-        """
-        if [[ "{params.bigwig}" != "None" ]]; then
-            bedMappabilityFilter --bigwig {params.bigwig} --bam {input.cram} --output {output.cram} --minimum-mappability {params.threshold} --threads {threads}
-            samtools index {output.cram}
-            rm -f {input.cram}
-            rm -f {input.crai}
-        else
-            mv {input.cram} {output.cram}
-            mv {input.crai} {output.crai}
-        fi
-        """
-
-# STEP 3: Remove regions based off of blacklist file
-rule blacklist_bed:
-    input:
-        bed=rules.filter_bed_mappability.output.bed,
-        tbi=rules.filter_bed_mappability.output.tbi
-    output:
-        bed=cmb(out_dir, "{sample}.final.gz"),
-        tbi=cmb(out_dir, "{sample}.final.gz.tbi"),
-    params:
-        blacklist=blacklist if blacklist.endswith(".gz") else blacklist+".gz",
-        blk=blk
-    threads: 4
-    shell:
-        """
-        if [[ "{params.blk}" == "" ]]; then
-            mv {input.bed} {output.bed}
-            mv {input.tbi} {output.tbi}
-        else
-            # -f 0.5 only removes intervals from the input file if the blacklist regions touch its midpoint
-            bedtools subtract -a {input.bed} -b {params.blacklist} -f 0.5 | bgzip -@ {threads} > {output.bed}
-            tabix -p bed {output.bed}
-            rm -f {input.bed}
-            rm -f {input.tbi}
-        fi
-        """
-# -U flag is very vague but it does some sort of blacklisting...
-rule blacklist_bam:
-    input:
-        bam=rules.filter_bam_mappability.output.bam,
-        bai=rules.filter_bam_mappability.output.bai
-    output:
-        bam=cmb(out_dir, "{sample}.final.bam"),
-        bai=cmb(out_dir, "{sample}.final.bam.bai"),
-    params:
-        blacklist=blacklist if blacklist.endswith(".gz") else blacklist+".gz",
-        blk=blk
-    threads: 4
-    shell:
-        """
-        if [[ "{params.blk}" == "" ]]; then
-            mv {input.bam} {output.bam}
-            mv {input.bai} {output.bai}
-        else
-            samtools view -b -U {params.blacklist} -@ {threads} {input.bam} > {output.bam}
-            samtools index {output.bam}
-            rm -f {input.bam}
-            rm -f {input.bai}
-        fi
-        """
-
-rule blacklist_cram:
-    input:
-        cram=rules.filter_cram_mappability.output.cram,
-        crai=rules.filter_cram_mappability.output.crai
-    output:
-        cram=cmb(out_dir, "{sample}.final.cram"),
-        crai=cmb(out_dir, "{sample}.final.cram.crai"),
-    params:
-        blacklist=blacklist if blacklist.endswith(".gz") else blacklist+".gz",
-        blk=blk
-    threads: 4 
-    shell:
-        """
-        if [[ "{params.blk}" == "" ]]; then
-            mv {input.cram} {output.cram}
-            mv {input.crai} {output.crai}
-        else
-            samtools view -b -U {params.blacklist} -@ {threads} {input.cram} > {output.cram}
-            samtools index {output.cram}
-            rm -f {input.cram}
-            rm -f {input.crai}
-        fi
-        """
-
-# STEP 4: Finaletoolkit commands. Using "is not None" to avoid falsy values accidentaly bypassing flags
+# STEP 4: Regular Finaletoolkit commands. Using "is not None" to avoid falsy values accidentaly bypassing flags
 
 rule frag_length_bins:
     input:
@@ -517,7 +338,7 @@ rule frag_length_bins:
 rule frag_length_intervals:
     input:
         data=lambda wildcards:  cmb(out_dir, f"{wildcards.sample}.final.{wildcards.ext}"),
-        intervals=cmb(sup_dir, f"{frag_length_interval_file}")
+        intervals=cmb(sup_dir, f"{spl(frag_length_interval_file)[0]}.filtered{spl(frag_length_interval_file)[1]}")
     output:
         cmb(out_dir, "{sample}.{ext}.frag_length_intervals.bed")
     threads: frag_length_intervals_workers
@@ -552,7 +373,7 @@ rule frag_length_intervals:
 rule coverage:
     input:
         data=lambda wildcards:  cmb(out_dir, f"{wildcards.sample}.final.{wildcards.ext}"),
-        intervals=cmb(sup_dir, f"{coverage_interval_file}")
+        intervals=cmb(sup_dir, f"{spl(coverage_interval_file)[0]}.filtered{spl(coverage_interval_file)[1]}")
     output:
         cmb(out_dir, "{sample}.{ext}.coverage.bed")
     threads: coverage_workers
@@ -630,7 +451,7 @@ rule interval_end_motifs:
     input:
         data=lambda wildcards:  cmb(out_dir, f"{wildcards.sample}.final.{wildcards.ext}"),
         refseq=cmb(sup_dir, f"{interval_end_motifs_refseq_file}"),
-        intervals=cmb(sup_dir, f"{interval_end_motifs_interval_file}")
+        intervals=cmb(sup_dir, f"{spl(interval_end_motifs_interval_file)[0]}.filtered{spl(interval_end_motifs_interval_file)[1]}")
     output:
         cmb(out_dir, "{sample}.{ext}.interval_end_motifs.tsv")
     threads: interval_end_motifs_workers
@@ -710,7 +531,7 @@ rule interval_mds:
 rule wps:
     input:
         data=lambda wildcards: cmb(out_dir, f"{wildcards.sample}.final.{wildcards.ext}"),
-        site_bed=cmb(sup_dir, f"{wps_site_bed}")
+        site_bed=cmb(sup_dir, f"{spl(wps_site_bed)[0]}.filtered{spl(wps_site_bed)[1]}")
     output:
         cmb(out_dir, "{sample}.{ext}.wps.bw")
     threads: wps_workers
@@ -738,7 +559,7 @@ rule wps:
 rule adjust_wps:
     input:
         wps=lambda wildcards: cmb(out_dir, f"{wildcards.sample}.{wildcards.ext}.wps.bw"),
-        intervals=cmb(sup_dir, f"{adjust_wps_interval_file}"),
+        intervals=cmb(sup_dir, f"{spl(adjust_wps_interval_file)[0]}.filtered{spl(adjust_wps_interval_file)[1]}"),
         chrom_sizes=cmb(sup_dir, f"{adjust_wps_chrom_sizes}")
     output:
         cmb(out_dir, "{sample}.{ext}.adjust_wps.bw")
@@ -780,7 +601,7 @@ rule delfi:
         input_file=lambda wildcards: cmb(out_dir, f"{wildcards.sample}.final.{wildcards.ext}"),
         chrom_sizes=cmb(sup_dir, f"{delfi_chrom_sizes}"),
         reference_file=cmb(sup_dir, f"{delfi_reference_file}"),
-        bins_file=cmb(sup_dir, f"{delfi_bins_file}"),
+        bins_file=cmb(sup_dir, f"{spl(delfi_bins_file)[0]}.filtered{spl(delfi_bins_file)[1]}"),
     output:
         cmb(out_dir, "{sample}.{ext}.delfi.bed")
     threads: delfi_workers
@@ -834,7 +655,7 @@ rule delfi:
 rule cleavage_profile:
     input:
         data=lambda wildcards: cmb(out_dir, f"{wildcards.sample}.final.{wildcards.ext}"),
-        intervals=cmb(sup_dir, f"{cleavage_profile_interval_file}")
+        intervals=cmb(sup_dir, f"{spl(cleavage_profile_interval_file)[0]}.filtered{spl(cleavage_profile_interval_file)[1]}")
     output:
         cmb(out_dir, "{sample}.{ext}.cleavage_profile.bw")
     threads: cleavage_profile_workers
@@ -867,7 +688,7 @@ rule cleavage_profile:
 rule agg_bw:
     input:
         data=lambda wildcards: cmb(out_dir, f"{wildcards.sample}.{wildcards.ext}.cleavage_profile.bw"),
-        intervals=cmb(sup_dir, f"{agg_bw_interval_file}")
+        intervals=cmb(sup_dir, f"{spl(cleavage_profile_interval_file)[0]}.filtered{spl(cleavage_profile_interval_file)[1]}")
     output:
         cmb(out_dir, "{sample}.{ext}.agg_bw.wig")
     threads: 1
