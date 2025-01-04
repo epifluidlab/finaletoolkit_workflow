@@ -1,17 +1,33 @@
 output_dir: "output"
 input_dir: "input"
 supplement_dir: "supplement" 
-# mapq: 35 
-# blacklist: "blacklist.bed"
+
+# Finaletoolkit filter-file parameters
+
+# filter_file_quality: 20
+# filter_file_min_length: 10
+# filter_file_max_length: 200
+# filter_file_blacklist: "blacklist.bed"
+# filter_file_whitelist: "whitelist.bed"
+# filter_file_intersect_policy: "midpoint"
+# filter_file_workers: 8
+
+# Mappability parameters
+
+# mappability_file: "100merMappability.bw"
+# mappability_threshold: 0.2
 
 # Frag-length-bins parameters
+
 # frag_length_bins: True
 # frag_length_bins_bin_size: 10
+# frag_length_bins_mapq: 30
+# frag_length_bins_policy: "midpoint"
 # frag_length_bins_min_len: 50
 # frag_length_bins_max_len: 350
-# frag_length_bins_chrom: "22"
-# frag_length_bins_start: 10031
-# frag_length_bins_end: 225368645
+# frag_length_bins_chrom: "12"
+# frag_length_bins_start: 0
+# frag_length_bins_end: 41000000
 
 # Frag-length-intervals parameters
 # frag_length_intervals: True
@@ -108,3 +124,8 @@ supplement_dir: "supplement"
 # cleavage_profile_left: 2000
 # cleavage_profile_right: 2000
 # cleavage_profile_workers: 8
+
+# agg_bw: True
+# agg_bw_interval_file: "tss.hg19.intervals.chr22.bed"
+# agg_bw_median_window_size: 1
+# agg_bw_mean: True
