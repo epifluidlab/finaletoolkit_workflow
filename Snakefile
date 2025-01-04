@@ -29,8 +29,8 @@ check_tools()
 out_dir = cnfg("output_dir", "output")
 in_dir = cnfg("input_dir", "input")
 sup_dir = cnfg("supplement_dir", "supplement") # Should contain interval, blacklist, .chrom.sizes, .2bit, and other files that supplement the input files
-blk = cnfg("filter_file_blacklist", None)
-
+blk = cnfg("filter_file_blacklist", "")
+wht = cnfg("filter_file_whitelist", "")
 mappability_file = cnfg("mappability_file", None)
 mappability_threshold = cnfg("mappability_threshold", 0)
 
@@ -38,7 +38,7 @@ filter_file_quality = cnfg("filter_file_quality", 0)
 filter_file_min_length = cnfg("filter_file_min_length", 0)
 filter_file_max_length = cnfg("filter_file_max_length", (1 << 31) - 1)
 filter_file_blacklist = cmb(sup_dir, blk)
-filter_file_whitelist = cnfg("filter_file_whitelist", "whitelist.bed")
+filter_file_whitelist = cmb(sup_dir, wht)
 filter_file_intersect_policy = cnfg("filter_file_intersect_policy", "midpoint")
 filter_file_workers = cnfg("filter_file_workers", 8)
 
@@ -195,7 +195,7 @@ sample_cram = [spl(os.path.basename(f))[0] for f in cram_files]
 sample_interval = [frag_length_interval_file, coverage_interval_file, cleavage_profile_interval_file, wps_site_bed, adjust_wps_interval_file, delfi_bins_file,interval_end_motifs_interval_file]
 sample_interval_bins = [spl(fp)[0] for fp in sample_interval if fp and fp.endswith(".bins")]
 sample_interval_bed = [spl(fp)[0] for fp in sample_interval if fp and fp.endswith(".bed")]
-print(sample_interval_bins,sample_interval_bed)
+
 def io(endings, samples, condition,dir=out_dir):
     return expand(cmb(dir, "{sample}.{ending}"), sample=samples, ending=endings) if condition else []
 rule all:
@@ -207,9 +207,11 @@ rule all:
         # CRAM output
         io(["final.cram"], sample_cram, not using_finaletoolkit),
 
-        # Blacklist compression
+        # Blacklist/Whitelist compression
         filter_file_blacklist+".tbi" if blk and blk.endswith(".gz") and not os.path.exists(filter_file_blacklist + ".tbi") else [],
         expand(filter_file_blacklist+"{endings}", endings=['.gz','.gz.tbi']) if blk and not blk.endswith(".gz") else [],
+        filter_file_whitelist+".tbi" if wht and wht.endswith(".gz") and not os.path.exists(filter_file_whitelist + ".tbi") else [],
+        expand(filter_file_whitelist+"{endings}", endings=['.gz','.gz.tbi']) if wht and not wht.endswith(".gz") else [],
 
         # Interval file output (mappability)
         io(["filtered.bed"], sample_interval_bed, len(sample_interval) > 0, sup_dir),
@@ -257,7 +259,7 @@ rule all:
         io(["cram.cleavage_profile.bw"], sample_cram, cleavage_profile),
         io(["cram.agg_bw.wig"], sample_cram, agg_bw),
 
-# STEP 1: Compress and index the blacklist file, just in case
+# STEP 1: Compress and index the blacklist/whitelist file, just in case
 rule blacklist:
     input: 
         filter_file_blacklist
@@ -270,11 +272,32 @@ rule blacklist:
             bgzip -@ {threads} -c {input} > {output.gz}
             tabix -p bed {output.gz}
         """
-rule index:
+rule blacklist_index_only:
     input: 
         filter_file_blacklist
     output:
         tbi=filter_file_blacklist+".tbi"
+    shell:
+        """
+            tabix -p bed {input}
+        """
+rule whitelist:
+    input: 
+        filter_file_whitelist
+    output:
+        gz=filter_file_whitelist+".gz",
+        tbi=filter_file_whitelist+".gz.tbi"
+    threads: 4
+    shell:
+        """
+            bgzip -@ {threads} -c {input} > {output.gz}
+            tabix -p bed {output.gz}
+        """
+rule whitelist_index_only:
+    input: 
+        filter_file_whitelist
+    output:
+        tbi=filter_file_whitelist+".tbi"
     shell:
         """
             tabix -p bed {input}
@@ -287,9 +310,15 @@ rule filter_file:
         lambda wildcards: cmb(in_dir, f"{wildcards.sample}.{wildcards.ext}")
     output:
         cmb(out_dir, "{sample}.final.{ext}"),
-    threads: 4
+    threads: filter_file_workers
     run:
-        shell(f"finaletoolkit filter-file -W {filter_file_whitelist} -B {filter_file_blacklist} -o {output} -q {filter_file_quality} -min {filter_file_min_length} -max {filter_file_max_length} -p {filter_file_intersect_policy} -w {filter_file_workers} {input}")
+        shell(
+            f"""finaletoolkit filter-file \
+            {" -W " if wht else ""}{filter_file_whitelist + ".gz" if not filter_file_whitelist.endswith(".gz") else filter_file_whitelist} \
+            {" -B " if blk else ""}{filter_file_blacklist + ".gz" if not filter_file_blacklist.endswith(".gz") else filter_file_blacklist} \
+            -o {output} -q {filter_file_quality} -min {filter_file_min_length} -max {filter_file_max_length} \
+            -p {filter_file_intersect_policy} -w {threads} {input}"""
+             )
 
 # STEP 3: Filter interval files using bedMappabilityFilter
 
