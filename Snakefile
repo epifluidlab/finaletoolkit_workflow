@@ -329,7 +329,10 @@ rule filter_mappability_bed:
         cmb(sup_dir, "{sample}.filtered.{ext}"),
     threads: 4
     run:
-        shell(f"bedMappabilityFilter --bigwig {cmb(sup_dir,mappability_file)} --bed {input} --output {output} --minimum-mappability {mappability_threshold} --threads {threads}")
+        if mappability_file is not None:
+            shell(f"bedMappabilityFilter --bigwig {cmb(sup_dir,mappability_file)} --bed {input} --output {output} --minimum-mappability {mappability_threshold} --threads {threads}")
+        else:
+            shell("mv {input} {output}")
 
 # STEP 4: Regular Finaletoolkit commands. Using "is not None" to avoid falsy values accidentaly bypassing flags
 
