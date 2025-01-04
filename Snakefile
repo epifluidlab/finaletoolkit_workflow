@@ -34,6 +34,7 @@ wht = cnfg("filter_file_whitelist_file", "")
 mappability_file = cnfg("mappability_file", None)
 mappability_threshold = cnfg("mappability_threshold", 0)
 
+filter_file = cnfg("filter_file", False)
 filter_file_quality_threshold = cnfg("filter_file_quality", 0)
 filter_file_min_length = cnfg("filter_file_min_length", 0)
 filter_file_max_length = cnfg("filter_file_max_length", (1 << 31) - 1)
@@ -312,13 +313,16 @@ rule filter_file:
         cmb(out_dir, "{sample}.final.{ext}"),
     threads: filter_file_workers
     run:
-        shell(
-            f"""finaletoolkit filter-file \
-            {" -W " if wht else ""}{filter_file_whitelist + ".gz" if not filter_file_whitelist.endswith(".gz") else filter_file_whitelist} \
-            {" -B " if blk else ""}{filter_file_blacklist + ".gz" if not filter_file_blacklist.endswith(".gz") else filter_file_blacklist} \
-            -o {output} -q {filter_file_quality} -min {filter_file_min_length} -max {filter_file_max_length} \
-            -p {filter_file_intersect_policy} -w {threads} {input}"""
-             )
+        if filter_file:
+            shell(
+                f"""finaletoolkit filter-file \
+                {" -W " if wht else ""}{filter_file_whitelist + ".gz" if not filter_file_whitelist.endswith(".gz") else filter_file_whitelist} \
+                {" -B " if blk else ""}{filter_file_blacklist + ".gz" if not filter_file_blacklist.endswith(".gz") else filter_file_blacklist} \
+                -o {output} -q {filter_file_quality} -min {filter_file_min_length} -max {filter_file_max_length} \
+                -p {filter_file_intersect_policy} -w {threads} {input}"""
+                )
+        else:
+            shell("mv {input} {output}")
 
 # STEP 3: Filter interval files using bedMappabilityFilter
 
