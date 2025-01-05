@@ -180,8 +180,11 @@ if (interval_mds and not interval_end_motifs):
 if (agg_bw and not cleavage_profile):
     raise SystemExit("cleavage-profile is required to run agg-bw.")
 
-if not os.path.exists(filter_file_blacklist):
+if blk and not os.path.exists(filter_file_blacklist):
     raise SystemExit(f"Blacklist file not found: {filter_file_blacklist}. The blacklist file must be in the supplement directory.")
+
+if wht and not os.path.exists(filter_file_whitelist):
+    raise SystemExit(f"Whitelist file not found: {filter_file_whitelist}. The whitelist file must be in the supplement directory.")
 
 using_finaletoolkit = frag_length_bins or frag_length_intervals or coverage or end_motifs or interval_end_motifs or mds or interval_mds or wps or adjust_wps or delfi or cleavage_profile or agg_bw
 
