@@ -16,13 +16,13 @@ Input files from the specified input directory are processed into the specified 
 
 snakemake --profile slurm_profile > snakemake.log 2>&1 &
 
-This runs the snakemake pipeline using flags from `slurm_profile/config.yaml`. In the sample `config.yaml` file given in [this repository](https://github.com/epifluidlab/finaletoolkit_workflow), the command above would create a slurm submission that allows for up to 2GB per snakemake job, up to 4 jobs running in parallel, and up to 8 cores per job. It runs in the background (`&`) with output going to `snakemake.log`.
+This runs the snakemake pipeline using flags from `slurm_profile/config.yaml`. In the sample `config.yaml` file given in this repository, the command above would create a slurm submission that allows for up to 2GB per snakemake job, up to 4 jobs running in parallel, and up to 8 cores per job. It runs in the background (`&`) with output going to `snakemake.log`.
 
 # Documentation
 
 ## Basic I/O
 
-The `Snakefile` in [this repository](https://github.com/epifluidlab/finaletoolkit_workflow) and a YAML file specifying the parameters to process your data must be present when running the workflow, in a manner similar to the example usage section above.
+The `Snakefile` in this repository and a YAML file specifying the parameters to process your data must be present when running the workflow, in a manner similar to the example usage section above.
 
 YAML parameters (mappings) are of the form: `key: value`, where values that are strings must be wrapped in double quotes, and each parameter is on its own line. This workflow requires the keys `input_dir` and `output_dir` to specify the folders in the working directory of which genomic data should be taken from and where it should be processed into.
 
