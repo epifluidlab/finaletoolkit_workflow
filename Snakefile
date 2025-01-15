@@ -35,7 +35,7 @@ mappability_file = cnfg("mappability_file", None)
 mappability_threshold = cnfg("mappability_threshold", 0)
 
 filter_file = cnfg("filter_file", False)
-filter_file_quality_threshold = cnfg("filter_file_quality", 0)
+filter_file_mapq = cnfg("filter_file_mapq", 0)
 filter_file_min_length = cnfg("filter_file_min_length", 0)
 filter_file_max_length = cnfg("filter_file_max_length", (1 << 31) - 1)
 filter_file_blacklist = cmb(sup_dir, blk)
@@ -46,7 +46,7 @@ filter_file_workers = cnfg("filter_file_workers", 8)
 # Finale Toolkit parameters
 # frag-length-bins
 frag_length_bins = cnfg("frag_length_bins", False)
-frag_length_bins_mapq = cnfg("frag_length_bins_quality_threshold", None)
+frag_length_bins_mapq = cnfg("frag_length_bins_mapq", None)
 frag_length_bins_policy = cnfg("frag_length_bins_intersect_policy", None)
 frag_length_bins_bin_size = cnfg("frag_length_bins_bin_size", None)
 frag_length_bins_min_len = cnfg("frag_length_bins_min_length", None)
@@ -58,7 +58,7 @@ frag_length_bins_end = cnfg("frag_length_bins_stop", None)
 # frag-length-intervals
 frag_length_intervals = cnfg("frag_length_intervals", False)
 frag_length_interval_file = cnfg("frag_length_interval_file", "")
-frag_length_intervals_mapq = cnfg("frag_length_intervals_quality_threshold", None)
+frag_length_intervals_mapq = cnfg("frag_length_intervals_mapq", None)
 frag_length_intervals_policy = cnfg("frag_length_intervals_intersect_policy", None)
 frag_length_intervals_min_len = cnfg("frag_length_intervals_min_length", None)
 frag_length_intervals_max_len = cnfg("frag_length_intervals_max_length", None)
@@ -67,7 +67,7 @@ frag_length_intervals_workers = cnfg("frag_length_intervals_workers", 1)
 # coverage
 coverage = cnfg("coverage", False)
 coverage_interval_file = cnfg("coverage_interval_file", "")
-coverage_mapq = cnfg("coverage_quality_threshold", None)
+coverage_mapq = cnfg("coverage_mapq", None)
 coverage_intersect_policy = cnfg("coverage_intersect_policy", None)
 coverage_min_len = cnfg("coverage_min_length", None)
 coverage_max_len = cnfg("coverage_max_length", None)
@@ -83,7 +83,7 @@ end_motifs_min_len = cnfg("end_motifs_min_length", None)
 end_motifs_max_len = cnfg("end_motifs_max_length", None)
 end_motifs_single_strand = cnfg("end_motifs_no_both_strands", False)
 end_motifs_negative_strand = cnfg("end_motifs_negative_strand", False)
-end_motifs_mapq = cnfg("end_motifs_quality_threshold", 20)
+end_motifs_mapq = cnfg("end_motifs_mapq", 20)
 end_motifs_workers = cnfg("end_motifs_workers", 1)
 
 # interval-end-motifs
@@ -95,7 +95,7 @@ interval_end_motifs_min_len = cnfg("interval_end_motifs_min_length", None)
 interval_end_motifs_max_len = cnfg("interval_end_motifs_max_length", None)
 interval_end_motifs_single_strand = cnfg("interval_end_motifs_single_strand", False)
 interval_end_motifs_negative_strand = cnfg("interval_end_motifs_negative_strand", False)
-interval_end_motifs_mapq = cnfg("interval_end_motifs_quality_threshold", 20)
+interval_end_motifs_mapq = cnfg("interval_end_motifs_mapq", 20)
 interval_end_motifs_workers = cnfg("interval_end_motifs_workers", None)
 
 # mds
@@ -116,7 +116,7 @@ wps_interval_size = cnfg("wps_interval_size", 5000)
 wps_window_size = cnfg("wps_window_size", 120)
 wps_min_len = cnfg("wps_min_length", 120)
 wps_max_len = cnfg("wps_max_length", 180)
-wps_mapq = cnfg("wps_quality_threshold", 30)
+wps_mapq = cnfg("wps_mapq", 30)
 wps_workers = cnfg("wps_workers", 1)
 
 # adjust-wps
@@ -145,7 +145,7 @@ delfi_no_gc_correct = cnfg("delfi_no_gc_correct", True)
 delfi_keep_nocov = cnfg("delfi_keep_nocov", True)
 delfi_no_merge_bins = cnfg("delfi_no_merge_bins", True)
 delfi_window_size = cnfg("delfi_window_size", 5000000)
-delfi_quality_threshold = cnfg("delfi_quality_threshold", 30)
+delfi_mapq = cnfg("delfi_mapq", 30)
 delfi_workers = cnfg("delfi_workers", 1)
 
 # cleavage-profile
@@ -154,7 +154,7 @@ cleavage_profile_interval_file = cnfg("cleavage_profile_interval_file", "")
 cleavage_profile_chrom_sizes = cnfg("cleavage_profile_chrom_sizes", None)
 cleavage_profile_min_len = cnfg("cleavage_profile_min_length", None)
 cleavage_profile_max_len = cnfg("cleavage_profile_max_length", None)
-cleavage_profile_mapq = cnfg("cleavage_profile_quality_threshold", 20)
+cleavage_profile_mapq = cnfg("cleavage_profile_mapq", 20)
 cleavage_profile_left = cnfg("cleavage_profile_left", 0)
 cleavage_profile_right = cnfg("cleavage_profile_right", 0)
 cleavage_profile_workers = cnfg("cleavage_profile_workers", 1)
@@ -192,10 +192,10 @@ bed_files = glob.glob(cmb(in_dir, "*.gz"))
 bam_files = glob.glob(cmb(in_dir, "*.bam"))
 cram_files = glob.glob(cmb(in_dir, "*.cram"))
 
-sample_bed = [spl(os.path.basename(f))[0] for f in bed_files]
+sample_bed = [spl(spl(os.path.basename(f))[0])[0] for f in bed_files]
 sample_bam = [spl(os.path.basename(f))[0] for f in bam_files]
 sample_cram = [spl(os.path.basename(f))[0] for f in cram_files]
-
+print(sample_bed)
 sample_interval = [frag_length_interval_file, coverage_interval_file, cleavage_profile_interval_file, wps_site_bed, adjust_wps_interval_file, delfi_bins_file,interval_end_motifs_interval_file]
 sample_interval_bins = [spl(fp)[0] for fp in sample_interval if fp and fp.endswith(".bins")]
 sample_interval_bed = [spl(fp)[0] for fp in sample_interval if fp and fp.endswith(".bed")]
@@ -205,11 +205,11 @@ def io(endings, samples, condition,dir=out_dir):
 rule all:
     input:
         # BED output
-        io(["final.gz"], sample_bed, not using_finaletoolkit),
+        io(["final.bed.gz","final.bed.gz.tbi"], sample_bed, not using_finaletoolkit),
         # BAM output
-        io(["final.bam"], sample_bam, not using_finaletoolkit),
+        io(["final.bam","final.bam.bai"], sample_bam, not using_finaletoolkit),
         # CRAM output
-        io(["final.cram"], sample_cram, not using_finaletoolkit),
+        io(["final.cram","final.cram.crai"], sample_cram, not using_finaletoolkit),
 
         # Blacklist/Whitelist compression
         filter_file_blacklist+".tbi" if blk and blk.endswith(".gz") and not os.path.exists(filter_file_blacklist + ".tbi") else [],
@@ -308,25 +308,49 @@ rule whitelist_index_only:
         """
 
 # STEP 2: Run filtering using filter-file
+def filter_file_helper(input, output, threads, ending):
+        if filter_file:
+            command = f"""finaletoolkit filter-file \
+                {" -W " if wht else ""}{"" if not wht else filter_file_whitelist + ".gz" if not filter_file_whitelist.endswith(".gz") else filter_file_whitelist} \
+                {" -B " if blk else ""}{"" if not blk else filter_file_blacklist + ".gz" if not filter_file_blacklist.endswith(".gz") else filter_file_blacklist} \
+                -o {output.main} -q {filter_file_mapq} -min {filter_file_min_length} -max {filter_file_max_length} \
+                -p {filter_file_intersect_policy} -w {threads} {input}"""
 
-rule filter_file:
+            print(f"Running command: {command}")   
+            shell(command)
+        else:
+            shell(f"cp {input} {output.main}") # output has multiple files
+            shell(f"cp {input}.{ending} {output.index}")
+
+rule filter_file_bed:
     input:
-        lambda wildcards: cmb(in_dir, f"{wildcards.sample}.{wildcards.ext}")
+        lambda wildcards: cmb(in_dir, f"{wildcards.sample}.bed.gz")
     output:
-        cmb(out_dir, "{sample}.final.{ext}"),
+        main=cmb(out_dir, "{sample}.final.bed.gz"),
+        index=cmb(out_dir, "{sample}.final.bed.gz.tbi")
     threads: filter_file_workers
     run:
-        if filter_file:
-            shell(
-                f"""finaletoolkit filter-file \
-                {" -W " if wht else ""}{filter_file_whitelist + ".gz" if not filter_file_whitelist.endswith(".gz") else filter_file_whitelist} \
-                {" -B " if blk else ""}{filter_file_blacklist + ".gz" if not filter_file_blacklist.endswith(".gz") else filter_file_blacklist} \
-                -o {output} -q {filter_file_quality} -min {filter_file_min_length} -max {filter_file_max_length} \
-                -p {filter_file_intersect_policy} -w {threads} {input}"""
-                )
-        else:
-            shell("mv {input} {output}")
+        filter_file_helper(input, output, threads, "tbi")
 
+rule filter_file_bam:
+    input:
+        lambda wildcards: cmb(in_dir, f"{wildcards.sample}.bam")
+    output:
+        main=cmb(out_dir, "{sample}.final.bam"),
+        index=cmb(out_dir, "{sample}.final.bam.bai")
+    threads: filter_file_workers
+    run:
+        filter_file_helper(input, output, threads, "bai")
+
+rule filter_file_cram:
+    input:
+        lambda wildcards: cmb(in_dir, f"{wildcards.sample}.cram")
+    output:
+        main=cmb(out_dir, "{sample}.final.cram"),
+        index=cmb(out_dir, "{sample}.final.cram.crai")
+    threads: filter_file_workers
+    run:
+        filter_file_helper(input, output, threads, "crai")
 # STEP 3: Filter interval files using bedMappabilityFilter
 
 rule filter_mappability_bed:
@@ -678,8 +702,8 @@ rule delfi:
             command_parts.append("-M")
         if delfi_window_size is not None:
             command_parts.append(f"-s {delfi_window_size}")
-        if delfi_quality_threshold is not None:
-            command_parts.append(f"-q {delfi_quality_threshold}")
+        if delfi_mapq is not None:
+            command_parts.append(f"-q {delfi_mapq}")
         if delfi_workers is not None:
             command_parts.append(f"-w {delfi_workers}")
 
