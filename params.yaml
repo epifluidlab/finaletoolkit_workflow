@@ -1,24 +1,26 @@
-output_dir: "output"
-input_dir: "input"
-supplement_dir: "supplement" 
+# Required folder organization requirements.
+output_dir: "/Users/myt8099/Documents/GitHub/finaletoolkit_workflow/output"
+input_dir: "/Users/myt8099/Documents/GitHub/finaletoolkit_workflow/input"
+supplement_dir: "/Users/myt8099/Documents/GitHub/finaletoolkit_workflow/supplement" 
 
-# Finaletoolkit filter-file parameters
+# Arguments for processing each file under FinaleToolkit functions.
+# workers: 1
 
-# filter_file_quality: 20
+# Arguments for interval file and corresponding mappability filter thresholding.
+interval_file: 
+mappability_file: 
+mappability_threshold: 0 
+
+# FinaleToolkit arguments for filter-file
+# filter_file: True
+# filter_file_mapq: 20
 # filter_file_min_length: 10
 # filter_file_max_length: 200
 # filter_file_blacklist: "blacklist.bed"
 # filter_file_whitelist: "whitelist.bed"
 # filter_file_intersect_policy: "midpoint"
-# filter_file_workers: 8
 
-# Mappability parameters
-
-# mappability_file: "100merMappability.bw"
-# mappability_threshold: 0.2
-
-# Frag-length-bins parameters
-
+# FinaleToolkit arguments for frag-length-bins
 # frag_length_bins: True
 # frag_length_bins_bin_size: 10
 # frag_length_bins_mapq: 30
@@ -29,7 +31,7 @@ supplement_dir: "supplement"
 # frag_length_bins_start: 0
 # frag_length_bins_end: 41000000
 
-# Frag-length-intervals parameters
+# FinaleToolkit arguments for frag-length-intervals
 # frag_length_intervals: True
 # frag_length_interval_file: "100kb.chr22.bins" 
 # frag_length_intervals_mapq: 30
@@ -38,6 +40,7 @@ supplement_dir: "supplement"
 # frag_length_intervals_max_len: 350
 # frag_length_intervals_workers: 4
 
+# FinaleToolkit arguments for coverage
 # coverage: True
 # coverage_interval_file: "100kb.chr22.bins"
 # coverage_mapq: 40
@@ -48,6 +51,7 @@ supplement_dir: "supplement"
 # coverage_normalize: True
 # coverage_scale_factor: 1000000
 
+# FinaleToolkit arguments for end-motifs
 # end_motifs: True
 # end_motifs_refseq_file: "hg19.2bit"
 # end_motifs_kmer_length: 5
@@ -58,6 +62,7 @@ supplement_dir: "supplement"
 # end_motifs_mapq: 30
 # end_motifs_workers: 8
 
+# FinaleToolkit arguments for interval-end-motifs
 # interval_end_motifs: True
 # interval_end_motifs_refseq_file: "hg19.2bit"
 # interval_end_motifs_interval_file: "100kb.chr22.bins" 
@@ -69,14 +74,17 @@ supplement_dir: "supplement"
 # interval_end_motifs_mapq: 30
 # interval_end_motifs_workers: 8
 
+# FinaleToolkit arguments for mds
 # mds: True
 # mds_sep: " "
 # mds_header: 0
 
+# FinaleToolkit arguments for interval-mds
 # interval_mds: True
 # interval_mds_sep: " "
 # interval_mds_header: 0
 
+# FinaleToolkit arguments for wps
 # wps: True
 # wps_chrom_sizes: "hg19.chrom.sizes"
 # wps_site_bed: "tss.hg19.intervals.chr22.bed"
@@ -87,6 +95,7 @@ supplement_dir: "supplement"
 # wps_mapq: 30
 # wps_workers: 4
 
+# FinaleToolkit arguments for adjust-wps
 # adjust_wps: True
 # adjust_wps_interval_file: "tss.hg19.intervals.chr22.bed"
 # adjust_wps_chrom_sizes: "hg19.chrom.sizes"
@@ -100,6 +109,7 @@ supplement_dir: "supplement"
 # adjust_wps_subtract_edges: True
 # adjust_wps_edge_size: 500 # Breaks functionality for some reason
 
+# FinaleToolkit arguments for delfi
 # delfi: True
 # delfi_blacklist_file: "ENCFF001TDO.bed"
 # # Only one of the two parameters below need to be given
@@ -115,6 +125,7 @@ supplement_dir: "supplement"
 # delfi_quality_threshold: 30
 # delfi_workers: 4
 
+# FinaleToolkit arguments for cleavage-profile
 # cleavage_profile: True
 # cleavage_profile_interval_file: "tss.hg19.chr22.bed"
 # cleavage_profile_chrom_sizes: "hg19.chrom.sizes"
@@ -125,6 +136,7 @@ supplement_dir: "supplement"
 # cleavage_profile_right: 2000
 # cleavage_profile_workers: 8
 
+# FinaleToolkit arguments for agg-bw
 # agg_bw: True
 # agg_bw_interval_file: "tss.hg19.intervals.chr22.bed"
 # agg_bw_median_window_size: 1
