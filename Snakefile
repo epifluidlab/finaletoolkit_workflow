@@ -188,14 +188,14 @@ if wht and not os.path.exists(filter_file_whitelist):
 
 using_finaletoolkit = frag_length_bins or frag_length_intervals or coverage or end_motifs or interval_end_motifs or mds or interval_mds or wps or adjust_wps or delfi or cleavage_profile or agg_bw
 
-bed_files = glob.glob(cmb(in_dir, "*.gz"))
+bed_files = glob.glob(cmb(in_dir, "*.bed.gz"))
 bam_files = glob.glob(cmb(in_dir, "*.bam"))
 cram_files = glob.glob(cmb(in_dir, "*.cram"))
 
 sample_bed = [spl(spl(os.path.basename(f))[0])[0] for f in bed_files]
 sample_bam = [spl(os.path.basename(f))[0] for f in bam_files]
 sample_cram = [spl(os.path.basename(f))[0] for f in cram_files]
-print(sample_bed)
+
 sample_interval = [frag_length_interval_file, coverage_interval_file, cleavage_profile_interval_file, wps_site_bed, adjust_wps_interval_file, delfi_bins_file,interval_end_motifs_interval_file]
 sample_interval_bins = [spl(fp)[0] for fp in sample_interval if fp and fp.endswith(".bins")]
 sample_interval_bed = [spl(fp)[0] for fp in sample_interval if fp and fp.endswith(".bed")]
@@ -205,11 +205,11 @@ def io(endings, samples, condition,dir=out_dir):
 rule all:
     input:
         # BED output
-        io(["final.bed.gz","final.bed.gz.tbi"], sample_bed, not using_finaletoolkit),
+        io(["final.bed.gz","final.bed.gz.tbi"], sample_bed, True),
         # BAM output
-        io(["final.bam","final.bam.bai"], sample_bam, not using_finaletoolkit),
+        io(["final.bam","final.bam.bai"], sample_bam, True),
         # CRAM output
-        io(["final.cram","final.cram.crai"], sample_cram, not using_finaletoolkit),
+        io(["final.cram","final.cram.crai"], sample_cram, True),
 
         # Blacklist/Whitelist compression
         filter_file_blacklist+".tbi" if blk and blk.endswith(".gz") and not os.path.exists(filter_file_blacklist + ".tbi") else [],
@@ -223,45 +223,45 @@ rule all:
 
         # Finale Toolkit outputs
         # (BED)
-        io(["gz.frag_length_bins.tsv", "gz.frag_length_bins.png"], sample_bed, frag_length_bins),
-        io(["gz.frag_length_intervals.bed"], sample_bed, frag_length_intervals),
-        io(["gz.coverage.bed"], sample_bed, coverage),
-        io(["gz.end_motifs.tsv"], sample_bed, end_motifs),
-        io(["gz.interval_end_motifs.tsv"], sample_bed, interval_end_motifs),
-        io(["gz.mds.txt"], sample_bed, mds),
-        io(["gz.interval_mds.tsv"], sample_bed, interval_mds),
-        io(["gz.wps.bw"], sample_bed, wps),
-        io(["gz.adjust_wps.bw"], sample_bed, adjust_wps),
-        io(["gz.delfi.bed"], sample_bed, delfi),
-        io(["gz.cleavage_profile.bw"], sample_bed, cleavage_profile),
-        io(["gz.agg_bw.wig"], sample_bed, agg_bw),
+        io(["final.bed.gz.frag_length_bins.tsv", "final.bed.gz.frag_length_bins.png"], sample_bed, frag_length_bins),
+        io(["final.bed.gz.frag_length_intervals.bed"], sample_bed, frag_length_intervals),
+        io(["final.bed.gz.coverage.bed"], sample_bed, coverage),
+        io(["final.bed.gz.end_motifs.tsv"], sample_bed, end_motifs),
+        io(["final.bed.gz.interval_end_motifs.tsv"], sample_bed, interval_end_motifs),
+        io(["final.bed.gz.mds.txt"], sample_bed, mds),
+        io(["final.bed.gz.interval_mds.tsv"], sample_bed, interval_mds),
+        io(["final.bed.gz.wps.bw"], sample_bed, wps),
+        io(["final.bed.gz.adjust_wps.bw"], sample_bed, adjust_wps),
+        io(["final.bed.gz.delfi.bed"], sample_bed, delfi),
+        io(["final.bed.gz.cleavage_profile.bw"], sample_bed, cleavage_profile),
+        io(["final.bed.gz.agg_bw.wig"], sample_bed, agg_bw),
         # (BAM)
-        io(["bam.frag_length_bins.tsv","bam.frag_length_bins.png"], sample_bam, frag_length_bins),
-        io(["bam.frag_length_intervals.bed"], sample_bam, frag_length_intervals),
-        io(["bam.coverage.bed"], sample_bam, coverage),
-        io(["bam.end_motifs.tsv"], sample_bam, end_motifs),
-        io(["bam.interval_end_motifs.tsv"], sample_bam, interval_end_motifs),
-        io(["bam.mds.txt"], sample_bam, mds),
-        io(["bam.interval_mds.tsv"], sample_bam, interval_mds),
-        io(["bam.wps.bw"], sample_bam, wps),
-        io(["bam.adjust_wps.bw"], sample_bam, adjust_wps),
-        io(["bam.delfi.bed"], sample_bam, delfi),
-        io(["bam.cleavage_profile.bw"], sample_bam, cleavage_profile),
-        io(["bam.agg_bw.wig"], sample_bam, agg_bw),
+        io(["final.bam.frag_length_bins.tsv","final.bam.frag_length_bins.png"], sample_bam, frag_length_bins),
+        io(["final.bam.frag_length_intervals.bed"], sample_bam, frag_length_intervals),
+        io(["final.bam.coverage.bed"], sample_bam, coverage),
+        io(["final.bam.end_motifs.tsv"], sample_bam, end_motifs),
+        io(["final.bam.interval_end_motifs.tsv"], sample_bam, interval_end_motifs),
+        io(["final.bam.mds.txt"], sample_bam, mds),
+        io(["final.bam.interval_mds.tsv"], sample_bam, interval_mds),
+        io(["final.bam.wps.bw"], sample_bam, wps),
+        io(["final.bam.adjust_wps.bw"], sample_bam, adjust_wps),
+        io(["final.bam.delfi.bed"], sample_bam, delfi),
+        io(["final.bam.cleavage_profile.bw"], sample_bam, cleavage_profile),
+        io(["final.bam.agg_bw.wig"], sample_bam, agg_bw),
 
         # (CRAM)
-        io(["cram.frag_length_bins.tsv","cram.frag_length_bins.png"], sample_cram, frag_length_bins),
-        io(["cram.frag_length_intervals.bed"], sample_cram, frag_length_intervals),
-        io(["cram.coverage.bed"], sample_cram, coverage),
-        io(["cram.end_motifs.tsv"], sample_cram, end_motifs),
-        io(["cram.interval_end_motifs.tsv"], sample_cram, interval_end_motifs),
-        io(["cram.mds.txt"], sample_cram, mds),
-        io(["cram.interval_mds.tsv"], sample_cram, interval_mds),
-        io(["cram.wps.bw"], sample_cram, wps),
-        io(["cram.adjust_wps.bw"], sample_cram, adjust_wps),
-        io(["cram.delfi.bed"], sample_cram, delfi),
-        io(["cram.cleavage_profile.bw"], sample_cram, cleavage_profile),
-        io(["cram.agg_bw.wig"], sample_cram, agg_bw),
+        io(["final.cram.frag_length_bins.tsv","cram.frag_length_bins.png"], sample_cram, frag_length_bins),
+        io(["final.cram.frag_length_intervals.bed"], sample_cram, frag_length_intervals),
+        io(["final.cram.coverage.bed"], sample_cram, coverage),
+        io(["final.cram.end_motifs.tsv"], sample_cram, end_motifs),
+        io(["final.cram.interval_end_motifs.tsv"], sample_cram, interval_end_motifs),
+        io(["final.cram.mds.txt"], sample_cram, mds),
+        io(["final.cram.interval_mds.tsv"], sample_cram, interval_mds),
+        io(["final.cram.wps.bw"], sample_cram, wps),
+        io(["final.cram.adjust_wps.bw"], sample_cram, adjust_wps),
+        io(["final.cram.delfi.bed"], sample_cram, delfi),
+        io(["final.cram.cleavage_profile.bw"], sample_cram, cleavage_profile),
+        io(["final.cram.agg_bw.wig"], sample_cram, agg_bw),
 
 # STEP 1: Compress and index the blacklist/whitelist file, just in case
 rule blacklist:
@@ -319,12 +319,12 @@ def filter_file_helper(input, output, threads, ending):
             print(f"Running command: {command}")   
             shell(command)
         else:
-            shell(f"cp {input} {output.main}") # output has multiple files
+            shell(f"cp {input} {output.main}")
             shell(f"cp {input}.{ending} {output.index}")
 
 rule filter_file_bed:
     input:
-        lambda wildcards: cmb(in_dir, f"{wildcards.sample}.bed.gz")
+        cmb(in_dir, "{sample}.bed.gz")
     output:
         main=cmb(out_dir, "{sample}.final.bed.gz"),
         index=cmb(out_dir, "{sample}.final.bed.gz.tbi")
@@ -369,10 +369,10 @@ rule filter_mappability_bed:
 
 rule frag_length_bins:
     input:
-        lambda wildcards: cmb(out_dir, f"{wildcards.sample}.final.{wildcards.ext}")
+        cmb(out_dir, "{sample}")
     output:
-        tsv=cmb(out_dir, "{sample}.{ext}.frag_length_bins.tsv"),
-        png=cmb(out_dir, "{sample}.{ext}.frag_length_bins.png")
+        tsv=cmb(out_dir, "{sample}.frag_length_bins.tsv"),
+        png=cmb(out_dir, "{sample}.frag_length_bins.png")
     threads: 1
     run:
         command_parts = [f"finaletoolkit frag-length-bins {input}"]
@@ -400,10 +400,10 @@ rule frag_length_bins:
 
 rule frag_length_intervals:
     input:
-        data=lambda wildcards:  cmb(out_dir, f"{wildcards.sample}.final.{wildcards.ext}"),
+        data= cmb(out_dir, "{sample}"),
         intervals=cmb(sup_dir, f"{spl(frag_length_interval_file)[0]}.filtered{spl(frag_length_interval_file)[1]}")
     output:
-        cmb(out_dir, "{sample}.{ext}.frag_length_intervals.bed")
+        cmb(out_dir, "{sample}.frag_length_intervals.bed")
     threads: frag_length_intervals_workers
     run:
         command_parts = [
@@ -435,10 +435,10 @@ rule frag_length_intervals:
 
 rule coverage:
     input:
-        data=lambda wildcards:  cmb(out_dir, f"{wildcards.sample}.final.{wildcards.ext}"),
+        data= cmb(out_dir, "{sample}"),
         intervals=cmb(sup_dir, f"{spl(coverage_interval_file)[0]}.filtered{spl(coverage_interval_file)[1]}")
     output:
-        cmb(out_dir, "{sample}.{ext}.coverage.bed")
+        cmb(out_dir, "{sample}.coverage.bed")
     threads: coverage_workers
     run:
         command_parts = [
@@ -475,10 +475,10 @@ rule coverage:
 
 rule end_motifs:
     input:
-        data=lambda wildcards: cmb(out_dir, f"{wildcards.sample}.final.{wildcards.ext}"),
+        data= cmb(out_dir, "{sample}"),
         refseq=cmb(sup_dir, f"{end_motifs_refseq_file}")
     output:
-        cmb(out_dir, "{sample}.{ext}.end_motifs.tsv")
+        cmb(out_dir, "{sample}.end_motifs.tsv")
     threads: end_motifs_workers
     run:
         command_parts = [
@@ -512,11 +512,11 @@ rule end_motifs:
 
 rule interval_end_motifs:
     input:
-        data=lambda wildcards:  cmb(out_dir, f"{wildcards.sample}.final.{wildcards.ext}"),
+        data= cmb(out_dir, "{sample}"),
         refseq=cmb(sup_dir, f"{interval_end_motifs_refseq_file}"),
         intervals=cmb(sup_dir, f"{spl(interval_end_motifs_interval_file)[0]}.filtered{spl(interval_end_motifs_interval_file)[1]}")
     output:
-        cmb(out_dir, "{sample}.{ext}.interval_end_motifs.tsv")
+        cmb(out_dir, "{sample}.interval_end_motifs.tsv")
     threads: interval_end_motifs_workers
     run:
         command_parts = [
@@ -551,9 +551,9 @@ rule interval_end_motifs:
 
 rule mds:
     input:
-        lambda wildcards: cmb(out_dir, f"{wildcards.sample}.{wildcards.ext}.end_motifs.tsv")
+        cmb(out_dir, "{sample}.end_motifs.tsv")
     output:
-        cmb(out_dir, "{sample}.{ext}.mds.txt")
+        cmb(out_dir, "{sample}.mds.txt")
     run:
         command_parts = [
             "finaletoolkit",
@@ -572,9 +572,9 @@ rule mds:
 
 rule interval_mds:
     input:
-        lambda wildcards: cmb(out_dir, f"{wildcards.sample}.{wildcards.ext}.interval_end_motifs.tsv")
+        cmb(out_dir, "{sample}.interval_end_motifs.tsv")
     output:
-        cmb(out_dir, "{sample}.{ext}.interval_mds.tsv")
+        cmb(out_dir, "{sample}.interval_mds.tsv")
     run:
         command_parts = [
             "finaletoolkit",
@@ -593,10 +593,10 @@ rule interval_mds:
 
 rule wps:
     input:
-        data=lambda wildcards: cmb(out_dir, f"{wildcards.sample}.final.{wildcards.ext}"),
+        data=cmb(out_dir, "{sample}"),
         site_bed=cmb(sup_dir, f"{spl(wps_site_bed)[0]}.filtered{spl(wps_site_bed)[1]}")
     output:
-        cmb(out_dir, "{sample}.{ext}.wps.bw")
+        cmb(out_dir, "{sample}.wps.bw")
     threads: wps_workers
     run:
         command_parts = ["finaletoolkit", "wps", input.data, input.site_bed]
@@ -621,11 +621,11 @@ rule wps:
 
 rule adjust_wps:
     input:
-        wps=lambda wildcards: cmb(out_dir, f"{wildcards.sample}.{wildcards.ext}.wps.bw"),
+        wps=cmb(out_dir, "{sample}.wps.bw"),
         intervals=cmb(sup_dir, f"{spl(adjust_wps_interval_file)[0]}.filtered{spl(adjust_wps_interval_file)[1]}"),
         chrom_sizes=cmb(sup_dir, f"{adjust_wps_chrom_sizes}")
     output:
-        cmb(out_dir, "{sample}.{ext}.adjust_wps.bw")
+        cmb(out_dir, "{sample}.adjust_wps.bw")
     threads: adjust_wps_workers
     run:
         command_parts = [
@@ -661,12 +661,12 @@ rule adjust_wps:
 
 rule delfi:
     input:
-        input_file=lambda wildcards: cmb(out_dir, f"{wildcards.sample}.final.{wildcards.ext}"),
+        input_file=cmb(out_dir, "{sample}"),
         chrom_sizes=cmb(sup_dir, f"{delfi_chrom_sizes}"),
         reference_file=cmb(sup_dir, f"{delfi_reference_file}"),
         bins_file=cmb(sup_dir, f"{spl(delfi_bins_file)[0]}.filtered{spl(delfi_bins_file)[1]}"),
     output:
-        cmb(out_dir, "{sample}.{ext}.delfi.bed")
+        cmb(out_dir, "{sample}.delfi.bed")
     threads: delfi_workers
     run:
         input_file = input.input_file
@@ -717,10 +717,10 @@ rule delfi:
 
 rule cleavage_profile:
     input:
-        data=lambda wildcards: cmb(out_dir, f"{wildcards.sample}.final.{wildcards.ext}"),
+        data= cmb(out_dir, "{sample}"),
         intervals=cmb(sup_dir, f"{spl(cleavage_profile_interval_file)[0]}.filtered{spl(cleavage_profile_interval_file)[1]}")
     output:
-        cmb(out_dir, "{sample}.{ext}.cleavage_profile.bw")
+        cmb(out_dir, "{sample}.cleavage_profile.bw")
     threads: cleavage_profile_workers
     run:
         command_parts = [
@@ -750,10 +750,10 @@ rule cleavage_profile:
         shell(f"{command}")
 rule agg_bw:
     input:
-        data=lambda wildcards: cmb(out_dir, f"{wildcards.sample}.{wildcards.ext}.cleavage_profile.bw"),
+        data= cmb(out_dir, "{sample}.cleavage_profile.bw"),
         intervals=cmb(sup_dir, f"{spl(cleavage_profile_interval_file)[0]}.filtered{spl(cleavage_profile_interval_file)[1]}")
     output:
-        cmb(out_dir, "{sample}.{ext}.agg_bw.wig")
+        cmb(out_dir, "{sample}.agg_bw.wig")
     threads: 1
     run:
         command_parts = [
