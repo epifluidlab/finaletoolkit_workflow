@@ -4,7 +4,7 @@ import pysam
 
 def mappability(mappability_bw, chrom, start, end):
     try:
-        mappability = mappability_bw.stats(str(chrom), start, end)[0]
+        mappability = mappability_bw.stats("chr"+str(chrom), start, end)[0]
     except RuntimeError:
         mappability = 0
     return mappability
