@@ -26,9 +26,12 @@ This runs the snakemake pipeline using flags from `slurm_profile/config.yaml`. I
 
 * The `Snakefile` in this repository and a YAML file specifying the parameters to process your data must be present when running the workflow, in a manner similar to the example usage section above.
 
+
 * YAML parameters (mappings) are of the form: `key: value`, where values that are strings must be wrapped in double quotes, and each parameter is on its own line. This workflow requires the keys `input_dir` and `output_dir` to specify the folders in the working directory of which genomic data should be taken from and where it should be processed into.
 
 * `supplement_dir` is also necessary to denote the folder of files that are not processed themselves in a command, but are needed to process input data. For example, you would put your blacklist, whitelist, mappability, and interval files in the folder specified by `supplement_dir`.
+
+* You may only use one format for the genomic files you run through this workflow, specified through the key `file_format`. Options include `bed.gz`, `bam`, and `cram`. 
 
 * Files in the `output_dir` directory will have an extension added before their format type. All files that make their way from the input to the output directory (after being run through `filter-file` if present) will have a `.filtered` extension before the type denoting the format. For example, `input/file.bed.gz` would be filtered into `output/file.filtered.bed.gz`.
 
