@@ -191,7 +191,7 @@ rule frag_length_bins:
 rule frag_length_intervals:
     input:
         data= os.path.join(out_dir, "{sample}.filtered.") + file_format,
-        intervals = os.path.join(sup_dir, config.get("interval_file") + ".filtered")
+        intervals = os.path.join(sup_dir, f"{config.get("interval_file")}" + ".filtered")
     output:
         os.path.join(out_dir, "{sample}.frag_length_intervals.bed")
     threads: config.get("frag_length_intervals_workers")
