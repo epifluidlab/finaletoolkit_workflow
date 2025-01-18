@@ -4,7 +4,7 @@ A Snakemake workflow designed to extract epigenomic features from several files 
 
 # Features
 
-All Finaletoolkit CLI commands are supported *except* for `gap-bed` and `delfi-gc correct`. In addition, this workflow supports mappability filtering of interval files, parallelization, slurm, and BED/BAM/CRAM compatability.
+All Finaletoolkit CLI commands are supported *except* for `gap-bed` and `delfi-gc-correct`. In addition, this workflow supports mappability filtering of interval files, parallelization, slurm, and BED/BAM/CRAM compatability.
 
 ## Example usage
 ```
