@@ -4,7 +4,7 @@ import pysam
 
 def mappability(mappability_bw, chrom, start, end):
     try:
-        mappability = mappability_bw.stats("chr"+str(chrom), start, end)[0]
+        mappability = mappability_bw.stats(str(chrom), start, end)[0]
     except RuntimeError:
         mappability = 0
     return mappability
@@ -37,7 +37,7 @@ def filter_intervals_by_mappability(input_file, mappability_file, output_file, t
                 mappability_score = mappability(bw, chrom, start, end)
                 if mappability_score is not None and mappability_score >= threshold:
                     output_handle.write(line)
-    elif input_file.endswith('.bed'):
+    elif input_file.endswith('.bed') or input_file.endswith('.bins'):
         with open(input_file, 'r') as bed:
             for line in bed:
                 if line.startswith("#"):
