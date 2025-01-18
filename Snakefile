@@ -26,7 +26,6 @@ check_tools()
 def exists(arg):
     return arg in config
 
-
 # Set some basic arguments and locations and which commands will be run
 
 out_dir = config.get("output_dir", "output")
@@ -89,9 +88,8 @@ rule all:
         io(["filtered.cram","filtered.cram.crai"], sample_files['cram'], file_format == "cram"),
 
         # Relevant output file if filtering out the mappability file.
+        io(["filtered"], [config.get('interval_file', "")], exists('interval_file'), sup_dir),
         
-        io([".filtered"], [config.get('interval_file', "")], exists('interval_file'), sup_dir),
-
         # Relevant FinaleToolkit function output files.
         *[
             io(["frag_length_bins.tsv", "frag_length_bins.png"], value, frag_length_bins) +
@@ -140,15 +138,16 @@ rule filter_file:
 
 rule filter_interval_file:
     input:
-        interval = config.get('interval_file', "")
+        interval = os.path.join(sup_dir, f"{config.get("interval_file","")}")
     output:
-        filtered = os.path.join(sup_dir, f"{config.get('interval_file')}.filtered")
+        filtered = os.path.join(sup_dir, f"{config.get("interval_file","")}" + ".filtered")
     params:
-        mappability_file = config.get("mappability_file"),
+        mappability_file = os.path.join(sup_dir, f"{config.get("mappability_file")}"),
         threshold = config.get("mappability_threshold", 0)
     script:
         "scripts/mappability_filter.py"
-# STEP 4: Regular Finaletoolkit commands. Using "is not None" to avoid falsy values accidentaly bypassing flags
+
+# STEP 4: Regular Finaletoolkit commands.
 rule frag_length_bins:
     input:
         os.path.join(out_dir, "{sample}.filtered.") + file_format
@@ -188,10 +187,11 @@ rule frag_length_bins:
         command = " ".join(command_parts)
         print("Running: ", command)
         shell(f"{command}")
+
 rule frag_length_intervals:
     input:
         data= os.path.join(out_dir, "{sample}.filtered.") + file_format,
-        intervals= lambda wildcards: os.path.join(sup_dir, f"{os.path.splitext(config.get("frag_length_interval_file"))[0]}.filtered{os.path.splitext(config.get("frag_length_interval_file"))[1]}")
+        intervals = os.path.join(sup_dir, config.get("interval_file") + ".filtered")
     output:
         os.path.join(out_dir, "{sample}.frag_length_intervals.bed")
     threads: config.get("frag_length_intervals_workers")
@@ -232,7 +232,7 @@ rule frag_length_intervals:
 rule coverage:
     input:
         data= os.path.join(out_dir, "{sample}.filtered.") + file_format,
-        intervals= lambda wildcards: os.path.join(sup_dir, f"{os.path.splitext(config.get("coverage_interval_file"))[0]}.filtered{os.path.splitext(config.get("coverage_interval_file"))[1]}")
+        intervals = os.path.join(sup_dir, f"{config.get("interval_file")}" + ".filtered")
     output:
         os.path.join(out_dir, "{sample}.coverage.bed")
     threads: config.get("coverage_workers")
@@ -279,8 +279,8 @@ rule coverage:
 
 rule end_motifs:
     input:
-        data= os.path.join(out_dir, "{sample}.filtered.") + file_format,
-        refseq= lambda wildcards: os.path.join(sup_dir, f"{config.get("end_motifs_refseq_file")}")
+        data = os.path.join(out_dir, "{sample}.filtered.") + file_format,
+        refseq = os.path.join(sup_dir, f"{config.get("end_motifs_refseq_file")}")
     output:
         os.path.join(out_dir, "{sample}.end_motifs.tsv")
     threads: config.get("end_motifs_workers")
@@ -324,9 +324,9 @@ rule end_motifs:
 
 rule interval_end_motifs:
     input:
-        data= os.path.join(out_dir, "{sample}.filtered.") + file_format,
-        refseq= lambda wildcards: os.path.join(sup_dir, f"{config.get("interval_end_motifs_refseq_file")}"),
-        intervals= lambda wildcards: os.path.join(sup_dir, f"{os.path.splitext(config.get("interval_end_motifs_interval_file"))[0]}.filtered{os.path.splitext(config.get("interval_end_motifs_interval_file"))[1]}")
+        data = os.path.join(out_dir, "{sample}.filtered.") + file_format,
+        refseq = os.path.join(sup_dir, f"{config.get("interval_end_motifs_refseq_file")}"),
+        intervals = os.path.join(sup_dir, f"{config.get("interval_file")}" + ".filtered")
     output:
         os.path.join(out_dir, "{sample}.interval_end_motifs.tsv")
     threads: config.get("interval_end_motifs_workers")
@@ -420,7 +420,7 @@ rule interval_mds:
 rule wps:
     input:
         data= os.path.join(out_dir, "{sample}.filtered.") + file_format,
-        site_bed= lambda wildcards: os.path.join(sup_dir, f"{os.path.splitext(config.get("wps_site_bed"))[0]}.filtered{os.path.splitext(config.get("wps_site_bed"))[1]}")
+        site_bed= os.path.join(sup_dir, f"{config.get("wps_site_bed")}")
     output:
         os.path.join(out_dir, "{sample}.wps.bw")
     threads: config.get("wps_workers")
@@ -456,8 +456,8 @@ rule wps:
 rule adjust_wps:
     input:
         wps=os.path.join(out_dir, "{sample}.wps.bw"),
-        intervals= lambda wildcards: os.path.join(sup_dir, f"{os.path.splitext(config.get("adjust_wps_interval_file"))[0]}.filtered{os.path.splitext(config.get("adjust_wps_interval_file"))[1]}"),
-        chrom_sizes= lambda wildcards: os.path.join(sup_dir, f"{config.get("adjust_wps_chrom_sizes")}")
+        intervals= os.path.join(sup_dir, f"{config.get("interval_file")}" + ".filtered"),
+        chrom_sizes= os.path.join(sup_dir, f"{config.get("adjust_wps_chrom_sizes")}")
     output:
         os.path.join(out_dir, "{sample}.adjust_wps.bw")
     threads: config.get("adjust_wps_workers")
@@ -505,10 +505,10 @@ rule adjust_wps:
 
 rule delfi:
     input:
-        input_file= os.path.join(out_dir, "{sample}.filtered.") + file_format,
-        chrom_sizes=lambda wildcards: os.path.join(sup_dir, f"{config.get("delfi_chrom_sizes")}"),
-        reference_file=lambda wildcards: os.path.join(sup_dir, f"{config.get("delfi_reference_file")}"),
-        bins_file=lambda wildcards: os.path.join(sup_dir, f"{os.path.splitext(config.get("delfi_bins_file"))[0]}.filtered{os.path.splitext(config.get("delfi_bins_file"))[1]}"),
+        input_file = os.path.join(out_dir, "{sample}.filtered.") + file_format,
+        chrom_sizes = os.path.join(sup_dir, f"{config.get("delfi_chrom_sizes")}"),
+        reference_file = os.path.join(sup_dir, f"{config.get("delfi_reference_file")}"),
+        bins_file = os.path.join(sup_dir, f"{config.get("delfi_bins_file")}"),
     output:
         os.path.join(out_dir, "{sample}.delfi.bed")
     threads: config.get("delfi_workers")
@@ -571,8 +571,8 @@ rule delfi:
 
 rule cleavage_profile:
     input:
-        data= os.path.join(out_dir, "{sample}.filtered.") + file_format,
-        intervals= lambda wildcards: os.path.join(sup_dir, f"{os.path.splitext(config.get("cleavage_profile_interval_file"))[0]}.filtered{os.path.splitext(config.get("cleavage_profile_interval_file"))[1]}")
+        data = os.path.join(out_dir, "{sample}.filtered.") + file_format,
+        intervals = os.path.join(sup_dir, f"{config.get("interval_file")}" + ".filtered")
     output:
         os.path.join(out_dir, "{sample}.cleavage_profile.bw")
     threads: config.get("cleavage_profile_workers")
@@ -612,8 +612,8 @@ rule cleavage_profile:
         shell(f"{command}")
 rule agg_bw:
     input:
-        data= os.path.join(out_dir, "{sample}.cleavage_profile.bw"),
-        intervals= lambda wildcards: os.path.join(sup_dir, f"{os.path.splitext(config.get("cleavage_profile_interval_file"))[0]}.filtered{os.path.splitext(config.get("cleavage_profile_interval_file"))[1]}")
+        data = os.path.join(out_dir, "{sample}.cleavage_profile.bw"),
+        intervals = os.path.join(sup_dir, f"{config.get("interval_file")}" + ".filtered")
     output:
         os.path.join(out_dir, "{sample}.agg_bw.wig")
     threads: 1
