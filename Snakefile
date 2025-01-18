@@ -32,6 +32,7 @@ def exists(arg):
 out_dir = config.get("output_dir", "output")
 in_dir = config.get("input_dir", "input")
 sup_dir = config.get("supplement_dir", "supplement")
+file_format = config.get("file_format","bed.gz")
 
 filter_file = config.get("filter_file", False)
 frag_length_bins = config.get("frag_length_bins", False)
@@ -56,6 +57,16 @@ if (mds and not end_motifs):
 if (interval_mds and not interval_end_motifs):
     raise SystemExit("interval-end-motifs is required to run interval-mds.")
 
+if (file_format != "bam" and file_format != "cram" and file_format != "bed.gz"):
+    raise SystemExit('File format must be of type "bed.gz," "bam," or "cram."')
+
+if file_format == "bam":
+    index = "bai"
+elif file_format == "cram":
+    index = "crai"
+elif file_format == "bed.gz":
+    index = "tbi"
+
 using_finaletoolkit = frag_length_bins or frag_length_intervals or coverage or end_motifs or interval_end_motifs or mds or interval_mds or wps or adjust_wps or delfi or cleavage_profile or agg_bw
 
 # Set the expand function for the files.
@@ -64,7 +75,7 @@ def io(endings, samples, condition, dir=out_dir):
 
 # Grab all of the sample files.
 sample_files = { 
-    'bed': [os.path.os.path.splitext(os.path.os.path.splitext(os.path.basename(f))[0])[0] for f in glob.glob(os.path.join(in_dir, "*.bed.gz"))],
+    'bed.gz': [os.path.os.path.splitext(os.path.os.path.splitext(os.path.basename(f))[0])[0] for f in glob.glob(os.path.join(in_dir, "*.bed.gz"))],
     'bam': [os.path.os.path.splitext(os.path.basename(f))[0] for f in glob.glob(os.path.join(in_dir, "*.bam"))],
     'cram': [os.path.os.path.splitext(os.path.basename(f))[0] for f in glob.glob(os.path.join(in_dir, "*.cram"))]
 }
@@ -73,9 +84,9 @@ sample_files = {
 rule all:
     input:
         # Output files for the filter-file.
-        io(["filtered.bed.gz","filtered.bed.gz.tbi"], sample_files['bed'], True),
-        io(["filtered.bam","filtered.bam.bai"], sample_files['bam'], True),
-        io(["filtered.cram","filtered.cram.crai"], sample_files['cram'], True),
+        io(["filtered.bed.gz","filtered.bed.gz.tbi"], sample_files['bed.gz'], file_format == "bed.gz"),
+        io(["filtered.bam","filtered.bam.bai"], sample_files['bam'], file_format == "bam"),
+        io(["filtered.cram","filtered.cram.crai"], sample_files['cram'], file_format == "cram"),
 
         # Relevant output file if filtering out the mappability file.
         
@@ -95,77 +106,37 @@ rule all:
             io(["delfi.bed"], value, delfi) +
             io(["cleavage_profile.bw"], value, cleavage_profile) +
             io(["agg_bw.wig"], value, agg_bw)
-            for key, value in sample_files.items()
+            for key, value in sample_files.items() if key == file_format
         ]
 
 # STEP 1: Run filtering using filter-file
-def filter_file_helper(input, output, params, ending):
-    if filter_file:
-        command = f"""finaletoolkit filter-file \
-            {f" -W {params.filter_file_whitelist}" if params.filter_file_whitelist else ""} \
-            {f" -B {params.filter_file_blacklist}" if params.filter_file_blacklist else ""} \
-            -o {output.main} -q {params.filter_file_mapq} -min {params.filter_file_min_length} -max {params.filter_file_max_length} \
-            -p {params.filter_file_intersect_policy} -w {params.filter_file_workers} {input.main}"""
-        shell(command)
-    else:
-        shell(f"cp {input.main} {output.main}")
-        shell(f"cp {input.index} {output.index}")
 
-ruleorder: filter_file_bam > filter_file_cram > filter_file_bed
-
-rule filter_file_bam:
+rule filter_file:
     input:
-        main = lambda wildcards: os.path.join(in_dir, f"{wildcards.sample}.bam"),
-        index = lambda wildcards: os.path.join(in_dir, f"{wildcards.sample}.bam.bai")
+        main=os.path.join(in_dir, "{sample}.") + file_format,
+        index=os.path.join(in_dir, "{sample}.") + file_format + "." + index
     output:
-        main = os.path.join(out_dir, "{sample}.final.bam"),
-        index = os.path.join(out_dir, "{sample}.final.bam.bai")
+        main=os.path.join(out_dir, "{sample}.filtered.") + file_format,
+        index=os.path.join(out_dir, "{sample}.filtered.") + file_format + "." + index,
     params:
         filter_file_mapq = config.get("filter_file_mapq", 0),
         filter_file_min_length = config.get("filter_file_min_length", 0),
         filter_file_max_length = config.get("filter_file_max_length", sys.maxsize),
-        filter_file_blacklist = lambda wildcards: os.path.join(sup_dir, config['filter_file_blacklist']) if 'filter_file_blacklist' in config else None,
-        filter_file_whitelist = lambda wildcards: os.path.join(sup_dir, config['filter_file_whitelist']) if 'filter_file_whitelist' in config else None,
+        filter_file_blacklist = os.path.join(sup_dir, config['filter_file_blacklist']) if 'filter_file_blacklist' in config else None,
+        filter_file_whitelist = os.path.join(sup_dir, config['filter_file_whitelist']) if 'filter_file_whitelist' in config else None,
         filter_file_intersect_policy = config.get("filter_file_intersect_policy", "midpoint"),
         filter_file_workers = config.get("workers", 1)
     run:
-        filter_file_helper(input, output, params, "bai")
-
-rule filter_file_cram:
-    input:
-        main = lambda wildcards: os.path.join(in_dir, f"{wildcards.sample}.cram"),
-        index = lambda wildcards: os.path.join(in_dir, f"{wildcards.sample}.cram.crai")
-    output:
-        main = os.path.join(out_dir, "{sample}.final.cram"),
-        index = os.path.join(out_dir, "{sample}.final.cram.crai")
-    params:
-        filter_file_mapq = config.get("filter_file_mapq", 0),
-        filter_file_min_length = config.get("filter_file_min_length", 0),
-        filter_file_max_length = config.get("filter_file_max_length", sys.maxsize),
-        filter_file_blacklist = lambda wildcards: os.path.join(sup_dir, config['filter_file_blacklist']) if 'filter_file_blacklist' in config else None,
-        filter_file_whitelist = lambda wildcards: os.path.join(sup_dir, config['filter_file_whitelist']) if 'filter_file_whitelist' in config else None,
-        filter_file_intersect_policy = config.get("filter_file_intersect_policy", "midpoint"),
-        filter_file_workers = config.get("workers", 1)
-    run:
-        filter_file_helper(input, output, params, "crai")
-
-rule filter_file_bed:
-    input:
-        main = lambda wildcards: os.path.join(in_dir, f"{wildcards.sample}.bed.gz"),
-        index = lambda wildcards: os.path.join(in_dir, f"{wildcards.sample}.bed.gz.tbi")
-    output:
-        main = os.path.join(out_dir, "{sample}.filtered.bed.gz"),
-        index = os.path.join(out_dir, "{sample}.filtered.bed.gz.tbi")
-    params:
-        filter_file_mapq = config.get("filter_file_mapq", 0),
-        filter_file_min_length = config.get("filter_file_min_length", 0),
-        filter_file_max_length = config.get("filter_file_max_length", sys.maxsize),
-        filter_file_blacklist = lambda wildcards: os.path.join(sup_dir, config['filter_file_blacklist']) if 'filter_file_blacklist' in config else None,
-        filter_file_whitelist = lambda wildcards: os.path.join(sup_dir, config['filter_file_whitelist']) if 'filter_file_whitelist' in config else None,
-        filter_file_intersect_policy = config.get("filter_file_intersect_policy", "midpoint"),
-        filter_file_workers = config.get("workers", 1)
-    run:
-        filter_file_helper(input, output, params, "tbi")
+        if filter_file:
+            command = f"""finaletoolkit filter-file \
+                {f" -W {params.filter_file_whitelist}" if params.filter_file_whitelist else ""} \
+                {f" -B {params.filter_file_blacklist}" if params.filter_file_blacklist else ""} \
+                -o {output.main} -q {params.filter_file_mapq} -min {params.filter_file_min_length} -max {params.filter_file_max_length} \
+                -p {params.filter_file_intersect_policy} -w {params.filter_file_workers} {input.main}"""
+            shell(command)
+        else:
+            shell(f"cp {input.main} {output.main}")
+            shell(f"cp {input.index} {output.index}")
 
 rule filter_interval_file:
     input:
@@ -180,7 +151,7 @@ rule filter_interval_file:
 # STEP 4: Regular Finaletoolkit commands. Using "is not None" to avoid falsy values accidentaly bypassing flags
 rule frag_length_bins:
     input:
-        os.path.join(out_dir, "{sample}")
+        os.path.join(out_dir, "{sample}.filtered.") + file_format
     output:
         tsv=os.path.join(out_dir, "{sample}.frag_length_bins.tsv"),
         png=os.path.join(out_dir, "{sample}.frag_length_bins.png")
@@ -219,7 +190,7 @@ rule frag_length_bins:
         shell(f"{command}")
 rule frag_length_intervals:
     input:
-        data= lambda wildcards: os.path.join(out_dir, wildcards.sample),
+        data= os.path.join(out_dir, "{sample}.filtered.") + file_format,
         intervals= lambda wildcards: os.path.join(sup_dir, f"{os.path.splitext(config.get("frag_length_interval_file"))[0]}.filtered{os.path.splitext(config.get("frag_length_interval_file"))[1]}")
     output:
         os.path.join(out_dir, "{sample}.frag_length_intervals.bed")
@@ -260,7 +231,7 @@ rule frag_length_intervals:
 
 rule coverage:
     input:
-        data= lambda wildcards: os.path.join(out_dir, wildcards.sample),
+        data= os.path.join(out_dir, "{sample}.filtered.") + file_format,
         intervals= lambda wildcards: os.path.join(sup_dir, f"{os.path.splitext(config.get("coverage_interval_file"))[0]}.filtered{os.path.splitext(config.get("coverage_interval_file"))[1]}")
     output:
         os.path.join(out_dir, "{sample}.coverage.bed")
@@ -308,7 +279,7 @@ rule coverage:
 
 rule end_motifs:
     input:
-        data= lambda wildcards: os.path.join(out_dir, wildcards.sample),
+        data= os.path.join(out_dir, "{sample}.filtered.") + file_format,
         refseq= lambda wildcards: os.path.join(sup_dir, f"{config.get("end_motifs_refseq_file")}")
     output:
         os.path.join(out_dir, "{sample}.end_motifs.tsv")
@@ -353,7 +324,7 @@ rule end_motifs:
 
 rule interval_end_motifs:
     input:
-        data= lambda wildcards: os.path.join(out_dir, wildcards.sample),
+        data= os.path.join(out_dir, "{sample}.filtered.") + file_format,
         refseq= lambda wildcards: os.path.join(sup_dir, f"{config.get("interval_end_motifs_refseq_file")}"),
         intervals= lambda wildcards: os.path.join(sup_dir, f"{os.path.splitext(config.get("interval_end_motifs_interval_file"))[0]}.filtered{os.path.splitext(config.get("interval_end_motifs_interval_file"))[1]}")
     output:
@@ -448,7 +419,7 @@ rule interval_mds:
 
 rule wps:
     input:
-        data= lambda wildcards: os.path.join(out_dir, wildcards.sample),
+        data= os.path.join(out_dir, "{sample}.filtered.") + file_format,
         site_bed= lambda wildcards: os.path.join(sup_dir, f"{os.path.splitext(config.get("wps_site_bed"))[0]}.filtered{os.path.splitext(config.get("wps_site_bed"))[1]}")
     output:
         os.path.join(out_dir, "{sample}.wps.bw")
@@ -534,7 +505,7 @@ rule adjust_wps:
 
 rule delfi:
     input:
-        input_file=lambda wildcards: os.path.join(out_dir, wildcards.sample),
+        input_file= os.path.join(out_dir, "{sample}.filtered.") + file_format,
         chrom_sizes=lambda wildcards: os.path.join(sup_dir, f"{config.get("delfi_chrom_sizes")}"),
         reference_file=lambda wildcards: os.path.join(sup_dir, f"{config.get("delfi_reference_file")}"),
         bins_file=lambda wildcards: os.path.join(sup_dir, f"{os.path.splitext(config.get("delfi_bins_file"))[0]}.filtered{os.path.splitext(config.get("delfi_bins_file"))[1]}"),
@@ -600,7 +571,7 @@ rule delfi:
 
 rule cleavage_profile:
     input:
-        data= lambda wildcards: os.path.join(out_dir, wildcards.sample),
+        data= os.path.join(out_dir, "{sample}.filtered.") + file_format,
         intervals= lambda wildcards: os.path.join(sup_dir, f"{os.path.splitext(config.get("cleavage_profile_interval_file"))[0]}.filtered{os.path.splitext(config.get("cleavage_profile_interval_file"))[1]}")
     output:
         os.path.join(out_dir, "{sample}.cleavage_profile.bw")
