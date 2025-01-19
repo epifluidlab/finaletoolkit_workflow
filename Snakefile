@@ -138,14 +138,15 @@ rule filter_file:
 
 rule filter_interval_file:
     input:
-        interval = os.path.join(sup_dir, f"{config.get("interval_file","")}")
+        interval = os.path.join(sup_dir, f"{config.get('interval_file', '')}")
     output:
-        filtered = os.path.join(sup_dir, f"{config.get("interval_file","")}" + ".filtered")
+        filtered = os.path.join(sup_dir, f"{config.get('interval_file', '')}" + ".filtered")
     params:
-        mappability_file = os.path.join(sup_dir, f"{config.get("mappability_file")}"),
+        mappability_file = os.path.join(sup_dir, f"{config.get('mappability_file')}"),
         threshold = config.get("mappability_threshold", 0)
     script:
         "scripts/mappability_filter.py"
+
 
 # STEP 4: Regular Finaletoolkit commands.
 rule frag_length_bins:
@@ -190,8 +191,8 @@ rule frag_length_bins:
 
 rule frag_length_intervals:
     input:
-        data= os.path.join(out_dir, "{sample}.filtered.") + file_format,
-        intervals = os.path.join(sup_dir, f"{config.get("interval_file")}" + ".filtered")
+        data = os.path.join(out_dir, "{sample}.filtered.") + file_format,
+        intervals = os.path.join(sup_dir, f"{config.get('interval_file')}" + ".filtered")
     output:
         os.path.join(out_dir, "{sample}.frag_length_intervals.bed")
     threads: config.get("frag_length_intervals_workers")
@@ -213,26 +214,24 @@ rule frag_length_intervals:
             command_parts.append(f"-min {params.min_len}")
         if params.max_len is not None:
             command_parts.append(f"-max {params.max_len}")
-
         if params.policy is not None:
             command_parts.append(f"-p {params.policy}")
-
         if params.mapq is not None:
             command_parts.append(f"-q {params.mapq}")
-
         if params.workers is not None:
             command_parts.append(f"-w {params.workers}")
 
-        command_parts.append(f"-o {output} -v")
+        command_parts.append(f"-o {output[0]} -v")  # Ensure output indexing
 
         command = " ".join(command_parts)
         print("Running: ", command)
         shell(f"{command}")
 
+
 rule coverage:
     input:
         data= os.path.join(out_dir, "{sample}.filtered.") + file_format,
-        intervals = os.path.join(sup_dir, f"{config.get("interval_file")}" + ".filtered")
+        intervals = os.path.join(sup_dir, f"{config.get('interval_file')}" + ".filtered")
     output:
         os.path.join(out_dir, "{sample}.coverage.bed")
     threads: config.get("coverage_workers")
@@ -280,7 +279,7 @@ rule coverage:
 rule end_motifs:
     input:
         data = os.path.join(out_dir, "{sample}.filtered.") + file_format,
-        refseq = os.path.join(sup_dir, f"{config.get("end_motifs_refseq_file")}")
+        refseq = os.path.join(sup_dir, f"{config.get('end_motifs_refseq_file')}")
     output:
         os.path.join(out_dir, "{sample}.end_motifs.tsv")
     threads: config.get("end_motifs_workers")
@@ -325,8 +324,8 @@ rule end_motifs:
 rule interval_end_motifs:
     input:
         data = os.path.join(out_dir, "{sample}.filtered.") + file_format,
-        refseq = os.path.join(sup_dir, f"{config.get("interval_end_motifs_refseq_file")}"),
-        intervals = os.path.join(sup_dir, f"{config.get("interval_file")}" + ".filtered")
+        refseq = os.path.join(sup_dir, f"{config.get('interval_end_motifs_refseq_file')}"),
+        intervals = os.path.join(sup_dir, f"{config.get('interval_file')}.filtered")
     output:
         os.path.join(out_dir, "{sample}.interval_end_motifs.tsv")
     threads: config.get("interval_end_motifs_workers")
@@ -363,7 +362,7 @@ rule interval_end_motifs:
             command_parts.append(f"-q {params.mapq}")
         if params.workers is not None:
             command_parts.append(f"-w {params.workers}")
-        command_parts.append(f"-o {output} -v")
+        command_parts.append(f"-o {output[0]} -v")
 
         command = " ".join(command_parts)
         print("Running: ", command)
@@ -381,15 +380,15 @@ rule mds:
         command_parts = [
             "finaletoolkit",
             "mds",
-            f"{input}"
+            input[0],  # Accessing the input file properly
         ]
         if params.sep is not None and params.sep != " ":
             command_parts.append(f"-s {params.sep}")
         if params.header is not None:
             command_parts.append(f"--header {params.header}")
 
-        command_parts.append(f"> {output}")
-        command = " ".join(command_parts)
+        # Redirect output to the file
+        command = " ".join(command_parts) + f" > {output[0]}"
         print("Running: ", command)
         shell(f"{command}")
 
@@ -405,22 +404,22 @@ rule interval_mds:
         command_parts = [
             "finaletoolkit",
             "interval-mds",
-            f"{input}",
-            f"{output}"
+            input[0],  # Accessing the input file properly
         ]
         if params.sep is not None and params.sep != " ":
             command_parts.append(f"-s {params.sep}")
         if params.header is not None:
             command_parts.append(f"--header {params.header}")
 
-        command = " ".join(command_parts)
+        # Redirect output to the file
+        command = " ".join(command_parts) + f" > {output[0]}"
         print("Running: ", command)
         shell(f"{command}")
 
 rule wps:
     input:
-        data= os.path.join(out_dir, "{sample}.filtered.") + file_format,
-        site_bed= os.path.join(sup_dir, f"{config.get("wps_site_bed")}")
+        data = os.path.join(out_dir, "{sample}.filtered.") + file_format,
+        site_bed = os.path.join(sup_dir, f"{config.get('wps_site_bed')}")
     output:
         os.path.join(out_dir, "{sample}.wps.bw")
     threads: config.get("wps_workers")
@@ -435,7 +434,7 @@ rule wps:
     run:
         command_parts = ["finaletoolkit", "wps", input.data, input.site_bed]
         if params.chrom_sizes is not None:
-            command_parts.append(f"-c {os.path.join(sup_dir,params.chrom_sizes)}")
+            command_parts.append(f"-c {os.path.join(sup_dir, params.chrom_sizes)}")
         if params.interval_size is not None:
             command_parts.append(f"-i {params.interval_size}")
         if params.window_size is not None:
@@ -448,16 +447,16 @@ rule wps:
             command_parts.append(f"-q {params.mapq}")
         if params.workers is not None:
             command_parts.append(f"-w {params.workers}")
-        command_parts.append(f"-o {output} -v")
+        command_parts.append(f"-o {output[0]} -v")
         command = " ".join(command_parts)
         print("Running: ", command)
         shell(f"{command}")
 
 rule adjust_wps:
     input:
-        wps=os.path.join(out_dir, "{sample}.wps.bw"),
-        intervals= os.path.join(sup_dir, f"{config.get("interval_file")}" + ".filtered"),
-        chrom_sizes= os.path.join(sup_dir, f"{config.get("adjust_wps_chrom_sizes")}")
+        wps = os.path.join(out_dir, "{sample}.wps.bw"),
+        intervals = os.path.join(sup_dir, f"{config.get('interval_file')}" + ".filtered"),
+        chrom_sizes = os.path.join(sup_dir, f"{config.get('adjust_wps_chrom_sizes')}")
     output:
         os.path.join(out_dir, "{sample}.adjust_wps.bw")
     threads: config.get("adjust_wps_workers")
@@ -498,7 +497,7 @@ rule adjust_wps:
             command_parts.append("--subtract-edges")
             if params.edge_size is not None:
                 command_parts.append(f"--edge-size {params.edge_size}")
-        command_parts.append(f"-o {output} -v")
+        command_parts.append(f"-o {output[0]} -v")
         command = " ".join(command_parts)
         print("Running: ", command)
         shell(f"{command}")
@@ -506,9 +505,9 @@ rule adjust_wps:
 rule delfi:
     input:
         input_file = os.path.join(out_dir, "{sample}.filtered.") + file_format,
-        chrom_sizes = os.path.join(sup_dir, f"{config.get("delfi_chrom_sizes")}"),
-        reference_file = os.path.join(sup_dir, f"{config.get("delfi_reference_file")}"),
-        bins_file = os.path.join(sup_dir, f"{config.get("delfi_bins_file")}"),
+        chrom_sizes = os.path.join(sup_dir, f"{config.get('delfi_chrom_sizes')}"),
+        reference_file = os.path.join(sup_dir, f"{config.get('delfi_reference_file')}"),
+        bins_file = os.path.join(sup_dir, f"{config.get('delfi_bins_file')}")
     output:
         os.path.join(out_dir, "{sample}.delfi.bed")
     threads: config.get("delfi_workers")
@@ -532,10 +531,10 @@ rule delfi:
         command_parts = [
             "finaletoolkit",
             "delfi",
-            input_file, # Use the modified input_file here
+            input_file,  # Use the modified input_file here
             input.chrom_sizes,
             input.reference_file,
-            input.bins_file,
+            input.bins_file
         ]
 
         if params.blacklist_file:
@@ -561,18 +560,19 @@ rule delfi:
         if params.workers is not None:
             command_parts.append(f"-w {params.workers}")
 
-        command_parts.append(f"-o {output} -v")
+        command_parts.append(f"-o {output[0]} -v")
 
         command = " ".join(command_parts)
         print("Running: ", command)
         shell(f"{command}")
-        if input_file.endswith(".gz"): # Rename it again so that snakemake doesn't lose track
+
+        if input_file.endswith(".gz"):  # Rename it again so that Snakemake doesn't lose track
             shell(f"mv {input_file} {input.input_file} && mv {input_file}.tbi {input.input_file}.tbi")
 
 rule cleavage_profile:
     input:
         data = os.path.join(out_dir, "{sample}.filtered.") + file_format,
-        intervals = os.path.join(sup_dir, f"{config.get("interval_file")}" + ".filtered")
+        intervals = os.path.join(sup_dir, f"{config.get('interval_file')}.filtered")
     output:
         os.path.join(out_dir, "{sample}.cleavage_profile.bw")
     threads: config.get("cleavage_profile_workers")
@@ -589,7 +589,7 @@ rule cleavage_profile:
             "finaletoolkit",
             "cleavage-profile",
             input.data,
-            input.intervals,
+            input.intervals
         ]
 
         if params.chrom_sizes is not None:
@@ -606,14 +606,16 @@ rule cleavage_profile:
             command_parts.append(f"-r {params.right}")
         if params.workers is not None:
             command_parts.append(f"-w {params.workers}")
-        command_parts.append(f"-o {output} -v")
+
+        command_parts.append(f"-o {output[0]} -v")
         command = " ".join(command_parts)
         print("Running: ", command)
         shell(f"{command}")
+
 rule agg_bw:
     input:
         data = os.path.join(out_dir, "{sample}.cleavage_profile.bw"),
-        intervals = os.path.join(sup_dir, f"{config.get("interval_file")}" + ".filtered")
+        intervals = os.path.join(sup_dir, f"{config.get('interval_file')}.filtered")
     output:
         os.path.join(out_dir, "{sample}.agg_bw.wig")
     threads: 1
@@ -625,15 +627,15 @@ rule agg_bw:
             "finaletoolkit",
             "agg-bw",
             input.data,
-            input.intervals,
+            input.intervals
         ]
 
-        if output:
-            command_parts.append(f"-o {output}")
         if params.median_window_size is not None:
             command_parts.append(f"-m {params.median_window_size}")
         if params.mean:
             command_parts.append("-a")
+
+        command_parts.append(f"-o {output[0]}")
         command_parts.append("-v")
 
         command = " ".join(command_parts)

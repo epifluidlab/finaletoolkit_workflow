@@ -2,8 +2,8 @@ executor: slurm
 configfile: "params.yaml"
 jobs: 4 # Up to 4 jobs running in parallel
 default-resources:
-  slurm_account: "mcb190124p"
-  slurm_partition: "RM-shared"
+  slurm_account: "acct"
+  slurm_partition: "partition"
   mem_mb: 2000 # Up to 2GB per job
   runtime: 2 # Up to 2 minutes per job
   cpus_per_task: 4 # Up to 8 cores per job
