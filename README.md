@@ -1,67 +1,79 @@
 
-# Finaletoolkit workflow
+# Finaletoolkit Workflow
 
-A Snakemake workflow designed to extract epigenomic features from several files in a folder.
+This Snakemake workflow automates the extraction of epigenomic features using Finaletoolkit, supporting parallel processing, SLURM, and common genomic file formats.
 
-# Features
+## Key Features
 
-All Finaletoolkit CLI commands are supported *except* for `gap-bed` and `delfi-gc-correct`. In addition, this workflow supports mappability filtering of interval files, parallelization, slurm, and BED/BAM/CRAM compatability.
+*   **Finaletoolkit Support:** Implements most Finaletoolkit CLI commands (excluding `gap-bed` and `delfi-gc-correct`).
+*   **File Compatibility:** Works with BED, BAM, and CRAM files.
+*   **Mappability Filtering:** Filters interval files based on mappability scores.
+*   **Parallelization:** Supports multi-core processing.
+*   **SLURM Integration:** Enables job submission to SLURM clusters.
 
-## Example usage
-```
-snakemake --configfile params.yaml -c8 -j 2
-```
-This runs the snakemake pipeline using parameters specified in `params.yaml` on 8 cores, with up to 2 rules running at a time.
+## Dependencies
 
-Input files from the specified input directory are processed into the specified output directory. Blacklist and secondary input files for finaletoolkit go in the supplementary directory.
+This workflow relies on the following tools being installed and accessible by your system PATH. We recommend that you install FinaleToolkit through `pip` and the other packages through `conda` in the Bioconda channel:
 
-```
-snakemake --profile slurm_profile > snakemake.log 2>&1 &
-```
+* `finaletoolkit`: A command-line tool for epigenomic analysis.
+* `bedtools`: A suite of utilities for working with genomic intervals.
+* `htslib`: A library that includes `bgzip`, necessary to GZIP uncompressed BED files. 
+* `samtools`: A set of tools for manipulating and analyzing sequencing BAM/CRAM data
 
-This runs the snakemake pipeline using flags from `slurm_profile/config.yaml`. In the sample `config.yaml` file given in this repository, the command above would create a slurm submission that allows for up to 2GB per snakemake job, up to 4 jobs running in parallel, and up to 8 cores per job. It runs in the background (`&`) with output going to `snakemake.log`.
+## Quick Start
 
-# Documentation
+1.  **Configuration:**  Create a `params.yaml` file defining your input, output, and processing options (reference below sections).
+2.  **Basic Execution:** Run the workflow with `snakemake --configfile params.yaml -c <cores> -j <jobs>`.
+   * `-c`: Number of CPU cores to use.
+   * `-j`: Maximum number of concurrent jobs.
+3.  **SLURM Execution:** Submit to SLURM to run in the background with `snakemake --profile slurm_profile > snakemake.log 2>&1 &` (see `slurm_profile/config.yaml` for default settings).
 
-## Basic I/O
+**Workflow Structure**
 
-* The `Snakefile` in this repository and a YAML file specifying the parameters to process your data must be present when running the workflow, in a manner similar to the example usage section above.
+*   **Input:**
+    *   Genomic data files are located in the directory specified by `input_dir`.
+    *   Supplemental files (blacklist, mappability, intervals) are located in the directory specified by `supplement_dir`.
+*   **Output:** Processed files are written to the directory specified by `output_dir`.
+*   **Configuration:** `params.yaml` dictates workflow parameters.
 
+## YAML Parameters
 
-* YAML parameters (mappings) are of the form: `key: value`, where values that are strings must be wrapped in double quotes, and each parameter is on its own line. This workflow requires the keys `input_dir` and `output_dir` to specify the folders in the working directory of which genomic data should be taken from and where it should be processed into.
+*   **Required:**
+    *   `input_dir`: Path to the input directory. Defaults to `input` if not specified
+    *   `output_dir`: Path to the output directory. Defaults to `output` if not specified.
+    *    `file_format`: `"bed.gz"`, `"bam"`, or `"cram"` indicating the format of the input files. Defaults to `bed.gz` if not specified.
 
-* `supplement_dir` is also necessary to denote the folder of files that are not processed themselves in a command, but are needed to process input data. For example, you would put your blacklist, whitelist, mappability, and interval files in the folder specified by `supplement_dir`.
+*   **Optional:**
+    *   `supplement_dir`: Path to supplemental files directory. Defaults to `supplement` if not specified. 
+    *   `mappability_file`: Name of the bigWig mappability file in `supplement_dir`.
+    *    `mappability_threshold`: Minimum average mappability score (0.0-1.0) for interval filtering.
+    *  `interval_file`: Path to interval file in `supplement_dir`.
+    *   `finaletoolkit_command: True/False`: Enables a specific Finaletoolkit command, using hyphens replaced by underscores (e.g., `adjust-wps` becomes `adjust_wps: True`).
+    *   `finaletoolkit_command_flag: value`: Sets flags for a Finaletoolkit command (e.g., `adjust_wps_max_length: 250`). Flags that take input files, output files, or `verbose` flags do not exist here.  `mapping_quality` is shortened to `mapq` for flags (e.g., `coverage_mapping_quality` becomes `coverage_mapq`).
 
-* You may only use one format for the genomic files you run through this workflow, specified through the key `file_format`. Options include `bed.gz`, `bam`, and `cram`. 
+## Output File Naming
 
-* Files in the `output_dir` directory will have an extension added before their format type. All files that make their way from the input to the output directory (after being run through `filter-file` if present) will have a `.filtered` extension before the type denoting the format. For example, `input/file.bed.gz` would be filtered into `output/file.filtered.bed.gz`.
+*   **Filtered Files:** Files are always are given a `.filtered` extension before the file format when passed into the output directory (e.g., `file.filtered.bed.gz`).
+*   **Command-Processed Files:** Files processed by a Finaletoolkit command have the command name (with underscores) inserted before their format (e.g., `file.frag_length_bins.bed.gz`).
+*   **Multiple Commands:** Input files will be processed for each enabled Finaletoolkit command.
 
-* Additionally if Finaletoolkit commands other than `filter-file` are specified, the secondary extension will be the name of the command the file was run through with hyphens substituted for underscores. For example, if you run `frag-length-bins`, files in an input directory like `input/file.bed.gz` would be run through Finaletoolkit and outputted as `output/file.frag_length_bins.bed.gz`.
+## Mappability Filtering
 
-* If multiple Finaletoolkit commands are specified, then each file will be outputted for each Finaletoolkit command.
+*   Uses `mappability_file` and `mappability_threshold` to filter intervals specified by `interval_file`.
+*   Interval files used in Finaletoolkit commands are pre-filtered by mappability.
 
-## Filtering by mappability
+## Using Finaletoolkit Commands
 
-* `mappability_file` and `mappability_threshold` are used to filter `interval_file` (located in `supplement_dir`, the path for the interval file for any Finaletoolkit commands that need one). 
+*   Finaletoolkit commands are specified in `params.yaml` with underscores instead of hyphens.
+*   Set command flags by appending `_<flag_name>` to the converted command name.
+*   **Dependencies:**  The workflow respects command dependencies.  For example, `adjust-wps` requires `wps` output, and `mds` needs `end-motifs`.
 
-* `mappability_file` should be the name of the bigWig file in `supplement_dir` that filters all interval files. 
+## `filter-file` Command
 
-* `mappability_threshold` should be a floating point value from 0.0 to 1.0 to denote the minimum average mappability value that intervals will be filtered by as per the mappability file. 
+*   If only `filter-file` is set to `True`, the output of the workflow will be the filtered files.
+*   If any other Finaletoolkit commands are set, they will use the output of `filter-file` as their input.
 
-* Finaletoolkit commands that take in these interval files will recieve the interval file filtered to have a minimum mappability score of the threshold. 
+## Notes
 
-## Using Finaletoolkit in this workflow
-
-* Finaletoolkit CLI commands and flags directly correspond to parameters in this workflow, with hyphens turning into underscores, and flags being seperated from their command by an underscore. 
-
-* For example, `adjust-wps` would be `adjust_wps`, and the max length flag of this command would be set through the key `adjust_wps_max_length`. A naming exception exists for `mapping_quality`, which condenses into `mapq` (e.g, instead of having `coverage_mapping_quality`, you would have `coverage_mapq`). 
-
-* If you want to use a Finaletoolkit command, set the converted command name in YAML to `True`. For example, if you wanted to run `adjust-wps` on your input files, include the line `adjust_wps: True`. Flags may be set through the naming scheme as specified in the paragraph above (`adjust_wps_max_length: 250`).
-
-* Flags for this workflow do not exist for `input_file`, `output_file`, command-specific interval files (all of them use the file in the supplement directory specified by `interval_file`), deperecated flags, or `verbose`, which is on by default.
-
-* Certain commands require prerequisite commands to run. For example, you must run `wps` to run `adjust-wps` since the `adjust-wps` rule takes in the output of `wps`. Similarly, `mds` requires `end-motifs`, `interval-end-motifs` requires `interval-mds`, and `agg-bw` requires `cleavage-profile`.
-
-## Filter-file
-
-* The `filter-file` command can be used in a different manner than the other Finaletoolkit commands. If only `filter-file` is set to run, then it will be the output of the workflow. However, if other Finaletoolkit commands are set to run, then they will take in the output of `filter-file`.
+*   This workflow uses `verbose` for Finaletoolkit commands by default.
+*  Depreciated flags are not used in this workflow.
