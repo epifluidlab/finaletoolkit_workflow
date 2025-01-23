@@ -28,7 +28,7 @@ This workflow relies on the following tools being installed and accessible by yo
    * `-j`: Maximum number of concurrent jobs.
 3.  **SLURM Execution:** Submit to SLURM to run in the background with `snakemake --profile slurm_profile > snakemake.log 2>&1 &` (see `slurm_profile/config.yaml` for default settings).
 
-**Workflow Structure**
+## Workflow Structure
 
 *   **Input:**
     *   Genomic data files are located in the directory specified by `input_dir`.
