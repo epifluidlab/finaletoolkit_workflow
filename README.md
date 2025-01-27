@@ -76,4 +76,4 @@ This workflow relies on the following tools being installed and accessible by yo
 ## Notes
 
 *   This workflow uses `verbose` for Finaletoolkit commands by default.
-*  Depreciated flags are not used in this workflow.
+*  Deprecated flags are not used in this workflow.
