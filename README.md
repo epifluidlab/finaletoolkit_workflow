@@ -11,22 +11,40 @@ This Snakemake workflow automates the extraction of epigenomic features using Fi
 *   **Parallelization:** Supports multi-core processing.
 *   **SLURM Integration:** Enables job submission to SLURM clusters.
 
+## Installation
+
+```bash
+$ git clone https://github.com/epifluidlab/finaletoolkit_workflow
+$ cd finaletoolkit_workflow
+$ conda env create -f environment.yml # Create enviroment with relevant conda packages
+$ conda activate finaletoolkit_workflow # Use environment for finaletoolkit-workflow
+```
+
 ## Dependencies
 
-This workflow relies on the following tools being installed and accessible by your system PATH. We recommend that you install FinaleToolkit through `pip` and the other packages through `conda` in the Bioconda channel:
+This workflow relies on the following tools being installed and accessible by your system PATH. FinaleToolkit must be installed through `pip` and the other packages through bioconda in `conda` (already installed if you activated the conda environment from `environment.yml`)
 
-* `finaletoolkit`: A command-line tool for epigenomic analysis.
-* `bedtools`: A suite of utilities for working with genomic intervals.
+* `finaletoolkit`: A command-line tool for epigenomic feature extraction.
+* `snakemake`: A workflow engine that determines which operations ("rules") to carry out on genomic files.
+* `bedtools`: A suite of utilities for working with and manipulating genomic intervals.
 * `htslib`: A library that includes `bgzip`, necessary to GZIP uncompressed BED files. 
 * `samtools`: A set of tools for manipulating and analyzing sequencing BAM/CRAM data
 
 ## Quick Start
 
 1.  **Configuration:**  Create a `params.yaml` file defining your input, output, and processing options (reference below sections).
-2.  **Basic Execution:** Run the workflow with `snakemake --configfile params.yaml -c <cores> -j <jobs>`.
-   * `-c`: Number of CPU cores to use.
-   * `-j`: Maximum number of concurrent jobs.
-3.  **SLURM Execution:** Submit to SLURM to run in the background with `snakemake --profile slurm_profile > snakemake.log 2>&1 &` (see `slurm_profile/config.yaml` for default settings).
+2.  **Basic Execution:** Run the workflow in the directory with the `Snakefile` present through the following command:
+```bash
+snakemake --configfile params.yaml --cores <cores> --jobs <jobs>
+# --cores: Number of CPU cores to use.
+# --jobs: Maximum number of concurrent jobs (limited by --cores).
+```
+3.  **SLURM Execution:** Submit to SLURM to run the workflow through the command below (see `slurm_profile/config.yaml` for default settings).
+```bash
+snakemake  --profile slurm_profile > snakemake.log 2>&1 &
+# Runs the command through params specified in slurm_profile/config.yaml in the background (&),
+# Redirects all command-related output to snakemake.log
+```
 
 ## Workflow Structure
 
