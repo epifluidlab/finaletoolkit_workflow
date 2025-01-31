@@ -13,7 +13,7 @@ This Snakemake workflow automates the extraction of epigenomic features using Fi
 
 ## Installation
 
-Reference the following command for setup and execution:
+Reference the following commands for setup and execution:
 
 ```bash
 $ git clone https://github.com/epifluidlab/finaletoolkit_workflow # Download the repository containing the workflow
@@ -41,17 +41,17 @@ This workflow relies on the following tools being installed and accessible by yo
 ```bash
 cd finaletoolkit_workflow # Enter the folder with the workflow Snakefile
 
-snakemake --configfile params.yaml --cores <cores> --jobs <jobs>
 # --cores: Number of CPU cores to use.
 # --jobs: Maximum number of concurrent jobs (limited by --cores).
+snakemake --configfile params.yaml --cores <cores> --jobs <jobs>
 ```
 3.  **SLURM Execution:** Submit to SLURM to run the workflow through the command below (see `slurm_profile/config.yaml` for default settings).
 ```bash
 cd finaletoolkit_workflow # Enter the folder with the workflow Snakefile
 
-snakemake  --profile slurm_profile > snakemake.log 2>&1 &
 # Runs the command through params specified in slurm_profile/config.yaml in the background (&),
 # Redirects all command-related output to snakemake.log
+snakemake  --profile slurm_profile > snakemake.log 2>&1 &
 ```
 
 ## Workflow Structure
@@ -79,27 +79,27 @@ snakemake  --profile slurm_profile > snakemake.log 2>&1 &
 
 ## Output File Naming
 
-*   **Filtered Files:** Files are always are given a `.filtered` extension before the file format when passed into the output directory (e.g., `file.filtered.bed.gz`).
+*   **Filtered Files:** Files are always given a `.filtered` extension before the file format when passed into the output directory (e.g., `file.filtered.bed.gz`).
 *   **Command-Processed Files:** Files processed by a Finaletoolkit command have the command name (with underscores) inserted before their format (e.g., `file.frag_length_bins.bed.gz`).
 *   **Multiple Commands:** Input files will be processed for each enabled Finaletoolkit command.
 
 ## Mappability Filtering
 
 *   Uses ``mappability_file`` and ``mappability_threshold`` (float from 0-1) to filter intervals specified by ``interval_file``.
-*   Interval files used in Finaletoolkit commands are pre-filtered by mappability quallity to at least the threshold if set. 
+*   Interval files used in Finaletoolkit commands are pre-filtered by mappability quality to at least the threshold if set. 
 
 ## Using Finaletoolkit Commands
 
 *   Finaletoolkit commands are specified in `params.yaml` with underscores instead of hyphens.
 *   Set command flags by appending `_<flag_name>` to the converted command name.
-*   **Dependencies:**  The workflow respects command dependencies.  For example, `adjust-wps` requires `wps` output, and `mds` needs `end-motifs`.
+*   This workflow respects command dependencies.  For example, `adjust-wps` requires `wps` output, and `mds` needs `end-motifs`.
 
 ## `filter-file` Command
 
-*   If only `filter-file` is set to `True`, the output of the workflow will be the filtered files.
+*   If only `filter-file` is set to `True`, the output of the workflow will be only the filtered files.
 *   If any other Finaletoolkit commands are set, they will use the output of `filter-file` as their input.
 
 ## Notes
 
 *   This workflow uses `verbose` for Finaletoolkit commands by default.
-*  Deprecated flags are not used in this workflow.
+*   Deprecated flags cannot be used in this workflow.
