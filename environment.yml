@@ -2,7 +2,7 @@ name: finaletoolkit_workflow
 channels:
   - bioconda
 dependencies:
-  - python=3.12.8
+  - python
   - bedtools
   - htslib
   - samtools
