@@ -74,9 +74,9 @@ def io(endings, samples, condition, dir=out_dir):
 
 # Grab all of the sample files.
 sample_files = { 
-    'bed.gz': [os.path.os.path.splitext(os.path.os.path.splitext(os.path.basename(f))[0])[0] for f in glob.glob(os.path.join(in_dir, "*.bed.gz"))],
-    'bam': [os.path.os.path.splitext(os.path.basename(f))[0] for f in glob.glob(os.path.join(in_dir, "*.bam"))],
-    'cram': [os.path.os.path.splitext(os.path.basename(f))[0] for f in glob.glob(os.path.join(in_dir, "*.cram"))]
+    'bed.gz': [os.path.splitext(os.path.splitext(os.path.basename(f))[0])[0] for f in glob.glob(os.path.join(in_dir, "*.bed.gz"))],
+    'bam': [os.path.splitext(os.path.basename(f))[0] for f in glob.glob(os.path.join(in_dir, "*.bam"))],
+    'cram': [os.path.splitext(os.path.basename(f))[0] for f in glob.glob(os.path.join(in_dir, "*.cram"))]
 }
 
 #Define all expected outputs and files.
