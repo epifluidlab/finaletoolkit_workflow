@@ -1,9 +1,10 @@
 name: finaletoolkit_workflow
 channels:
   - bioconda
+  - conda-forge
 dependencies:
-  - python
-  - bedtools
-  - htslib
-  - samtools
-  - snakemake
+  - python==3.12
+  - bedtools==2.31.1
+  - htslib==1.21
+  - samtools==1.21
+  - snakemake==8.26.0
