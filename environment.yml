@@ -6,3 +6,4 @@ dependencies:
   - bedtools
   - htslib
   - samtools
+  - snakemake
