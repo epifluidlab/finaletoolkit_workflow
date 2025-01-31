@@ -13,11 +13,15 @@ This Snakemake workflow automates the extraction of epigenomic features using Fi
 
 ## Installation
 
+Reference the following command for setup and execution:
+
 ```bash
-$ git clone https://github.com/epifluidlab/finaletoolkit_workflow
-$ cd finaletoolkit_workflow
-$ conda env create -f environment.yml # Create enviroment with relevant conda packages
+$ git clone https://github.com/epifluidlab/finaletoolkit_workflow # Download the repository containing the workflow
+$ cd finaletoolkit_workflow # Enter the repository folder
+$ conda env create -f environment.yml # Create environment with relevant conda packages
 $ conda activate finaletoolkit_workflow # Use environment for finaletoolkit-workflow
+$ pip install finaletoolkit # Install finaletoolkit seperately through pip 
+$ snakemake --configfile params.yaml --cores 4 --jobs 2 # Run with parameters set in params.yaml
 ```
 
 ## Dependencies
@@ -35,12 +39,16 @@ This workflow relies on the following tools being installed and accessible by yo
 1.  **Configuration:**  Create a `params.yaml` file defining your input, output, and processing options (reference below sections).
 2.  **Basic Execution:** Run the workflow in the directory with the `Snakefile` present through the following command:
 ```bash
+cd finaletoolkit_workflow # Enter the folder with the workflow Snakefile
+
 snakemake --configfile params.yaml --cores <cores> --jobs <jobs>
 # --cores: Number of CPU cores to use.
 # --jobs: Maximum number of concurrent jobs (limited by --cores).
 ```
 3.  **SLURM Execution:** Submit to SLURM to run the workflow through the command below (see `slurm_profile/config.yaml` for default settings).
 ```bash
+cd finaletoolkit_workflow # Enter the folder with the workflow Snakefile
+
 snakemake  --profile slurm_profile > snakemake.log 2>&1 &
 # Runs the command through params specified in slurm_profile/config.yaml in the background (&),
 # Redirects all command-related output to snakemake.log
