@@ -56,14 +56,14 @@ if (mds and not end_motifs):
 if (interval_mds and not interval_end_motifs):
     raise SystemExit("interval-end-motifs is required to run interval-mds.")
 
-if (file_format != "bam" and file_format != "cram" and file_format != "bed.gz"):
+if (file_format != "bam" and file_format != "cram" and file_format != "bed.gz" and file_format != "frag.gz"):
     raise SystemExit('File format must be of type "bed.gz," "bam," or "cram."')
 
 if file_format == "bam":
     index = "bai"
 elif file_format == "cram":
     index = "crai"
-elif file_format == "bed.gz":
+elif file_format == "bed.gz" or file_format == "frag.gz":
     index = "tbi"
 
 using_finaletoolkit = frag_length_bins or frag_length_intervals or coverage or end_motifs or interval_end_motifs or mds or interval_mds or wps or adjust_wps or delfi or cleavage_profile or agg_bw
@@ -75,6 +75,7 @@ def io(endings, samples, condition, dir=out_dir):
 # Grab all of the sample files.
 sample_files = { 
     'bed.gz': [os.path.splitext(os.path.splitext(os.path.basename(f))[0])[0] for f in glob.glob(os.path.join(in_dir, "*.bed.gz"))],
+    'frag.gz': [os.path.splitext(os.path.splitext(os.path.basename(f))[0])[0] for f in glob.glob(os.path.join(in_dir, "*.frag.gz"))],
     'bam': [os.path.splitext(os.path.basename(f))[0] for f in glob.glob(os.path.join(in_dir, "*.bam"))],
     'cram': [os.path.splitext(os.path.basename(f))[0] for f in glob.glob(os.path.join(in_dir, "*.cram"))]
 }
@@ -84,6 +85,7 @@ rule all:
     input:
         # Output files for the filter-file.
         io(["filtered.bed.gz","filtered.bed.gz.tbi"], sample_files['bed.gz'], file_format == "bed.gz"),
+        io(["filtered.frag.gz","filtered.frag.gz.tbi"], sample_files['frag.gz'], file_format == "frag.gz"),
         io(["filtered.bam","filtered.bam.bai"], sample_files['bam'], file_format == "bam"),
         io(["filtered.cram","filtered.cram.crai"], sample_files['cram'], file_format == "cram"),
 
@@ -522,16 +524,11 @@ rule delfi:
         mapq = config.get("delfi_mapq"),
         workers = config.get("delfi_workers")
     run:
-        input_file = input.input_file
-        if input_file.endswith(".gz"):
-            # Convince finaletoolkit that it is indeed a .frag.gz file
-            input_file = input_file.replace(".final.", ".")
-            shell(f"mv {input.input_file} {input_file} && mv {input.input_file}.tbi {input_file}.tbi")
 
         command_parts = [
             "finaletoolkit",
             "delfi",
-            input_file,  # Use the modified input_file here
+            input.input_file,  # Use the modified input_file here
             input.chrom_sizes,
             input.reference_file,
             input.bins_file
@@ -565,9 +562,6 @@ rule delfi:
         command = " ".join(command_parts)
         print("Running: ", command)
         shell(f"{command}")
-
-        if input_file.endswith(".gz"):  # Rename it again so that Snakemake doesn't lose track
-            shell(f"mv {input_file} {input.input_file} && mv {input_file}.tbi {input.input_file}.tbi")
 
 rule cleavage_profile:
     input:
