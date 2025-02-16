@@ -390,7 +390,7 @@ rule mds:
             command_parts.append(f"--header {params.header}")
 
         # Redirect output to the file
-        command = " ".join(command_parts) + f" > {output[0]}"
+        command = " ".join(command_parts) + f" {output[0]}"
         print("Running: ", command)
         shell(f"{command}")
 
@@ -414,7 +414,7 @@ rule interval_mds:
             command_parts.append(f"--header {params.header}")
 
         # Redirect output to the file
-        command = " ".join(command_parts) + f" > {output[0]}"
+        command = " ".join(command_parts) + f" {output[0]}"
         print("Running: ", command)
         shell(f"{command}")
 
