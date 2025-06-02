@@ -1,5 +1,5 @@
 
-# Finaletoolkit Workflow
+# FinaleToolkit Workflow
 
 This Snakemake workflow automates the extraction of epigenomic features using Finaletoolkit, supporting parallel processing, SLURM, and common genomic file formats.
 
@@ -103,3 +103,14 @@ snakemake  --profile slurm_profile > snakemake.log 2>&1 &
 
 *   This workflow uses `verbose` for Finaletoolkit commands by default.
 *   Deprecated flags cannot be used in this workflow.
+
+
+## Citation
+Li J*, Bandaru R*, Liu Y (2024) FinaleToolkit: Accelerating Cell-Free DNA Fragmentation Analysis with a High-Speed Computational Toolkit. BioRxiv Preprint [![Static Badge](https://img.shields.io/badge/DOI-10.1101%2F2024.05.29.596414-blue?style=flat-square)](https://doi.org/10.1101/2024.05.29.596414)
+
+## Contact
+- Kundan Baliga: kundanbal2969@k12.ipsd.org
+
+## License
+This project falls under an MIT license. See the included `LICENSE` file for details.
+
