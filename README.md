@@ -110,6 +110,8 @@ Li J*, Bandaru R*, Liu Y (2024) FinaleToolkit: Accelerating Cell-Free DNA Fragme
 
 ## Contact
 - Kundan Baliga: kundanbal2969@k12.ipsd.org
+- Ravi Bandaru: ravi.bandaru@northwestern.edu
+- Yaping Liu: yaping@northwestern.edu
 
 ## License
 This project falls under an MIT license. See the included `LICENSE` file for details.
