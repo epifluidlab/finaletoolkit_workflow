@@ -47,7 +47,15 @@ cd finaletoolkit_workflow # Enter the folder with the workflow Snakefile
 # --jobs: Maximum number of concurrent jobs (limited by --cores).
 snakemake --configfile params.yaml --cores <cores> --jobs <jobs>
 ```
-3.  **SLURM Execution:** Submit to SLURM to run the workflow through the command below (see `slurm_profile/config.yaml`
+3.  **SLURM Execution:** Before using this workflow with SLURM, first install
+the snakemake executor plugin: slurm:
+
+```bash
+conda activate finaletoolkit_workflow # activate the conda environment if not already activated
+conda install bioconda::snakemake-executor-plugin-slurm # install executor plugin from bioconda
+```
+
+Submit to SLURM to run the workflow through the command below (see `slurm_profile/config.yaml`
 for default settings).
 ```bash
 cd finaletoolkit_workflow # Enter the folder with the workflow Snakefile
