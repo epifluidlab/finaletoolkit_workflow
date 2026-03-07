@@ -1,4 +1,4 @@
-.snakemake
-input
-output
-supplement
+.snakemake/
+input/
+output/
+supplement/
