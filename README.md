@@ -20,13 +20,14 @@ $ git clone https://github.com/epifluidlab/finaletoolkit_workflow # Download the
 $ cd finaletoolkit_workflow # Enter the repository folder
 $ conda env create -f environment.yml # Create environment with relevant conda packages
 $ conda activate finaletoolkit_workflow # Use environment for finaletoolkit-workflow
-$ pip install finaletoolkit # Install finaletoolkit seperately through pip 
 $ snakemake --configfile params.yaml --cores 4 --jobs 2 # Run with parameters set in params.yaml
 ```
 
 ## Dependencies
 
-This workflow relies on the following tools being installed and accessible by your system PATH. FinaleToolkit must be installed through `pip` and the other packages through bioconda in `conda` (already installed if you activated the conda environment from `environment.yml`)
+This workflow relies on the following tools being installed and accessible by your system PATH. FinaleToolkit and other
+packages may be installed through bioconda in `conda` (already installed if you activated the conda environment from
+`environment.yml`)
 
 * `finaletoolkit`: A command-line tool for epigenomic feature extraction.
 * `snakemake`: A workflow engine that determines which operations ("rules") to carry out on genomic files.
@@ -36,7 +37,8 @@ This workflow relies on the following tools being installed and accessible by yo
 
 ## Quick Start
 
-1.  **Configuration:**  Create a `params.yaml` file defining your input, output, and processing options (reference below sections).
+1.  **Configuration:**  Create a `params.yaml` file defining your input, output, and processing options (reference below
+sections).
 2.  **Basic Execution:** Run the workflow in the directory with the `Snakefile` present through the following command:
 ```bash
 cd finaletoolkit_workflow # Enter the folder with the workflow Snakefile
@@ -45,7 +47,16 @@ cd finaletoolkit_workflow # Enter the folder with the workflow Snakefile
 # --jobs: Maximum number of concurrent jobs (limited by --cores).
 snakemake --configfile params.yaml --cores <cores> --jobs <jobs>
 ```
-3.  **SLURM Execution:** Submit to SLURM to run the workflow through the command below (see `slurm_profile/config.yaml` for default settings).
+3.  **SLURM Execution:** Before using this workflow with SLURM, first install
+the snakemake executor plugin: slurm:
+
+```bash
+conda activate finaletoolkit_workflow # activate the conda environment if not already activated
+conda install bioconda::snakemake-executor-plugin-slurm # install executor plugin from bioconda
+```
+
+Submit to SLURM to run the workflow through the command below (see `slurm_profile/config.yaml`
+for default settings).
 ```bash
 cd finaletoolkit_workflow # Enter the folder with the workflow Snakefile
 
@@ -58,7 +69,8 @@ snakemake  --profile slurm_profile > snakemake.log 2>&1 &
 
 *   **Input:**
     *   Genomic data files are located in the directory specified by `input_dir`.
-    *   Supplemental files (blacklist, mappability, intervals) are located in the directory specified by `supplement_dir`.
+    *   Supplemental files (blacklist, mappability, intervals) are located in the directory specified by
+    `supplement_dir`.
 *   **Output:** Processed files are written to the directory specified by `output_dir`.
 *   **Configuration:** `params.yaml` dictates workflow parameters.
 
@@ -67,15 +79,18 @@ snakemake  --profile slurm_profile > snakemake.log 2>&1 &
 *   **Required:**
     *   `input_dir`: Path to the input directory. Defaults to `input` if not specified
     *   `output_dir`: Path to the output directory. Defaults to `output` if not specified.
-    *    `file_format`: `"bed.gz"`, `"frag.gz"`, `"bam"`, or `"cram"` indicating the format of the input files. Defaults to `bed.gz` if not specified.
+    *    `file_format`: `"bed.gz"`, `"frag.gz"`, `"bam"`, or `"cram"` indicating the format of the input files. Defaults
+    to `bed.gz` if not specified.
 
 *   **Optional:**
     *   `supplement_dir`: Path to supplemental files directory. Defaults to `supplement` if not specified. 
     *   `mappability_file`: Name of the bigWig mappability file in `supplement_dir`.
     *    `mappability_threshold`: Minimum average mappability score (0.0-1.0) for interval filtering.
     *  `interval_file`: Path to interval file in `supplement_dir`.
-    *   `finaletoolkit_command: True/False`: Enables a specific Finaletoolkit command, using hyphens replaced by underscores (e.g., `adjust-wps` becomes `adjust_wps: True`).
-    *   `finaletoolkit_command_flag: value`: Sets flags for a Finaletoolkit command (e.g., `adjust_wps_max_length: 250`). Flags that take input files, output files, or `verbose` flags do not exist here.  `mapping_quality` is shortened to `mapq` for flags (e.g., `coverage_mapping_quality` becomes `coverage_mapq`).
+    *   `finaletoolkit_command: True/False`: Enables a specific Finaletoolkit command, using hyphens replaced by
+    underscores (e.g., `adjust-wps` becomes `adjust_wps: True`).
+    *   `finaletoolkit_command_flag: value`: Sets flags for a Finaletoolkit command (e.g.,
+    `adjust_wps_max_length: 250`). Flags that take input files, output files, or `verbose` flags do not exist here.  `mapping_quality` is shortened to `mapq` for flags (e.g., `coverage_mapping_quality` becomes `coverage_mapq`).
 
 ## Output File Naming
 
@@ -106,7 +121,7 @@ snakemake  --profile slurm_profile > snakemake.log 2>&1 &
 
 
 ## Citation
-Li J*, Bandaru R*, Liu Y (2024) FinaleToolkit: Accelerating Cell-Free DNA Fragmentation Analysis with a High-Speed Computational Toolkit. BioRxiv Preprint [![Static Badge](https://img.shields.io/badge/DOI-10.1101%2F2024.05.29.596414-blue?style=flat-square)](https://doi.org/10.1101/2024.05.29.596414)
+Li JW, Bandaru R, Baliga K, Liu Y. FinaleToolkit: accelerating cell-free DNA fragmentation analysis with a high-speed computational toolkit. Bioinform Adv. 2025;5(1):vbaf236. Published 2025 Sep 26. doi:10.1093/bioadv/vbaf236
 
 ## Contact
 - Kundan Baliga: kundanbal2969@k12.ipsd.org

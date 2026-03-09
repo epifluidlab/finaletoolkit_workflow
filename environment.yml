@@ -8,3 +8,4 @@ dependencies:
   - htslib==1.21
   - samtools==1.21
   - snakemake==8.26.0
+  - finaletoolkit==0.11.0
