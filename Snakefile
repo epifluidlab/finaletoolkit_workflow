@@ -33,6 +33,32 @@ in_dir = config.get("input_dir", "input")
 sup_dir = config.get("supplement_dir", "supplement")
 file_format = config.get("file_format","bed.gz")
 
+# Interval file
+_interval_base = config.get('interval_file', '')
+if _interval_base.endswith('.bed.gz'):
+    FILTERED_INTERVAL = os.path.join(sup_dir, _interval_base[:-7] + '.filtered.bed.gz')
+elif _interval_base.endswith('.bed'):
+    FILTERED_INTERVAL = os.path.join(sup_dir, _interval_base[:-4] + '.filtered.bed')
+else:
+    FILTERED_INTERVAL = os.path.join(sup_dir, _interval_base + '.filtered')
+
+# Per-rule output subdirectories
+filter_file_dir                = os.path.join(out_dir, "filter_file")
+frag_length_bins_dir           = os.path.join(out_dir, "frag_length_bins")
+frag_length_intervals_dir      = os.path.join(out_dir, "frag_length_intervals")
+coverage_dir                   = os.path.join(out_dir, "coverage")
+end_motifs_dir                 = os.path.join(out_dir, "end_motifs")
+interval_end_motifs_dir        = os.path.join(out_dir, "interval_end_motifs")
+mds_dir                        = os.path.join(out_dir, "mds")
+interval_mds_dir               = os.path.join(out_dir, "interval_mds")
+wps_dir                        = os.path.join(out_dir, "wps")
+adjust_wps_dir                 = os.path.join(out_dir, "adjust_wps")
+delfi_dir                      = os.path.join(out_dir, "delfi")
+cleavage_profile_dir           = os.path.join(out_dir, "cleavage_profile")
+agg_bw_dir                     = os.path.join(out_dir, "agg_bw")
+breakpoint_motifs_dir          = os.path.join(out_dir, "breakpoint_motifs")
+interval_breakpoint_motifs_dir = os.path.join(out_dir, "interval_breakpoint_motifs")
+
 filter_file = config.get("filter_file", False)
 frag_length_bins = config.get("frag_length_bins", False)
 frag_length_intervals = config.get("frag_length_intervals", False)
@@ -86,30 +112,30 @@ sample_files = {
 rule all:
     input:
         # Output files for the filter-file.
-        io(["filtered.bed.gz","filtered.bed.gz.tbi"], sample_files['bed.gz'], file_format == "bed.gz"),
-        io(["filtered.frag.gz","filtered.frag.gz.tbi"], sample_files['frag.gz'], file_format == "frag.gz"),
-        io(["filtered.bam","filtered.bam.bai"], sample_files['bam'], file_format == "bam"),
-        io(["filtered.cram","filtered.cram.crai"], sample_files['cram'], file_format == "cram"),
+        io(["filtered.bed.gz","filtered.bed.gz.tbi"], sample_files['bed.gz'], file_format == "bed.gz", filter_file_dir),
+        io(["filtered.frag.gz","filtered.frag.gz.tbi"], sample_files['frag.gz'], file_format == "frag.gz", filter_file_dir),
+        io(["filtered.bam","filtered.bam.bai"], sample_files['bam'], file_format == "bam", filter_file_dir),
+        io(["filtered.cram","filtered.cram.crai"], sample_files['cram'], file_format == "cram", filter_file_dir),
 
         # Relevant output file if filtering out the mappability file.
         io(["filtered"], [config.get('interval_file', "")], exists('interval_file'), sup_dir),
-        
+
         # Relevant FinaleToolkit function output files.
         *[
-            io(["frag_length_bins.tsv", "frag_length_bins.png"], value, frag_length_bins) +
-            io(["frag_length_intervals.bed"], value, frag_length_intervals) +
-            io(["coverage.bed"], value, coverage) +
-            io(["end_motifs.tsv"], value, end_motifs) +
-            io(["interval_end_motifs.tsv"], value, interval_end_motifs) +
-            io(["mds.txt"], value, mds) +
-            io(["interval_mds.tsv"], value, interval_mds) +
-            io(["wps.bw"], value, wps) +
-            io(["adjust_wps.bw"], value, adjust_wps) +
-            io(["delfi.bed"], value, delfi) +
-            io(["cleavage_profile.bw"], value, cleavage_profile) +
-            io(["agg_bw.wig"], value, agg_bw) +
-            io(["breakpoint_motifs.tsv"], value, breakpoint_motifs) +
-            io(["interval_breakpoint_motifs.tsv"], value, interval_breakpoint_motifs)
+            io(["frag_length_bins.tsv", "frag_length_bins.png"], value, frag_length_bins, frag_length_bins_dir) +
+            io(["frag_length_intervals.bed"], value, frag_length_intervals, frag_length_intervals_dir) +
+            io(["coverage.bed"], value, coverage, coverage_dir) +
+            io(["end_motifs.tsv"], value, end_motifs, end_motifs_dir) +
+            io(["interval_end_motifs.tsv"], value, interval_end_motifs, interval_end_motifs_dir) +
+            io(["mds.txt"], value, mds, mds_dir) +
+            io(["interval_mds.tsv"], value, interval_mds, interval_mds_dir) +
+            io(["wps.bw"], value, wps, wps_dir) +
+            io(["adjust_wps.bw"], value, adjust_wps, adjust_wps_dir) +
+            io(["delfi.bed"], value, delfi, delfi_dir) +
+            io(["cleavage_profile.bw"], value, cleavage_profile, cleavage_profile_dir) +
+            io(["agg_bw.wig"], value, agg_bw, agg_bw_dir) +
+            io(["breakpoint_motifs.tsv"], value, breakpoint_motifs, breakpoint_motifs_dir) +
+            io(["interval_breakpoint_motifs.tsv"], value, interval_breakpoint_motifs, interval_breakpoint_motifs_dir)
             for key, value in sample_files.items() if key == file_format
         ]
 
@@ -120,8 +146,8 @@ rule filter_file:
         main=os.path.join(in_dir, "{sample}.") + file_format,
         index=os.path.join(in_dir, "{sample}.") + file_format + "." + index
     output:
-        main=os.path.join(out_dir, "{sample}.filtered.") + file_format,
-        index=os.path.join(out_dir, "{sample}.filtered.") + file_format + "." + index,
+        main=os.path.join(filter_file_dir, "{sample}.filtered.") + file_format,
+        index=os.path.join(filter_file_dir, "{sample}.filtered.") + file_format + "." + index,
     params:
         filter_file_mapq = config.get("filter_file_mapq", 0),
         filter_file_min_length = config.get("filter_file_min_length", 0),
@@ -146,7 +172,7 @@ rule filter_interval_file:
     input:
         interval = os.path.join(sup_dir, f"{config.get('interval_file', '')}")
     output:
-        filtered = os.path.join(sup_dir, f"{config.get('interval_file', '')}" + ".filtered")
+        filtered = FILTERED_INTERVAL
     params:
         mappability_file = os.path.join(sup_dir, f"{config.get('mappability_file')}"),
         threshold = config.get("mappability_threshold", 0)
@@ -157,10 +183,10 @@ rule filter_interval_file:
 # STEP 4: Regular Finaletoolkit commands.
 rule frag_length_bins:
     input:
-        os.path.join(out_dir, "{sample}.filtered.") + file_format
+        os.path.join(filter_file_dir, "{sample}.filtered.") + file_format
     output:
-        tsv=os.path.join(out_dir, "{sample}.frag_length_bins.tsv"),
-        png=os.path.join(out_dir, "{sample}.frag_length_bins.png")
+        tsv=os.path.join(frag_length_bins_dir, "{sample}.frag_length_bins.tsv"),
+        png=os.path.join(frag_length_bins_dir, "{sample}.frag_length_bins.png")
     threads: 1
     params:
         mapq = config.get("frag_length_bins_mapq"),
@@ -203,10 +229,10 @@ rule frag_length_bins:
 
 rule frag_length_intervals:
     input:
-        data = os.path.join(out_dir, "{sample}.filtered.") + file_format,
-        intervals = os.path.join(sup_dir, f"{config.get('interval_file')}" + ".filtered")
+        data = os.path.join(filter_file_dir, "{sample}.filtered.") + file_format,
+        intervals = FILTERED_INTERVAL
     output:
-        os.path.join(out_dir, "{sample}.frag_length_intervals.bed")
+        os.path.join(frag_length_intervals_dir, "{sample}.frag_length_intervals.bed")
     threads: config.get("frag_length_intervals_workers")
     params:
         min_len = config.get("frag_length_intervals_min_len"),
@@ -245,10 +271,10 @@ rule frag_length_intervals:
 
 rule coverage:
     input:
-        data= os.path.join(out_dir, "{sample}.filtered.") + file_format,
-        intervals = os.path.join(sup_dir, f"{config.get('interval_file')}" + ".filtered")
+        data= os.path.join(filter_file_dir, "{sample}.filtered.") + file_format,
+        intervals = FILTERED_INTERVAL
     output:
-        os.path.join(out_dir, "{sample}.coverage.bed")
+        os.path.join(coverage_dir, "{sample}.coverage.bed")
     threads: config.get("coverage_workers")
     params:
         min_len = config.get("coverage_min_len"),
@@ -293,10 +319,10 @@ rule coverage:
 
 rule end_motifs:
     input:
-        data = os.path.join(out_dir, "{sample}.filtered.") + file_format,
+        data = os.path.join(filter_file_dir, "{sample}.filtered.") + file_format,
         refseq = os.path.join(sup_dir, f"{config.get('end_motifs_refseq_file')}")
     output:
-        os.path.join(out_dir, "{sample}.end_motifs.tsv")
+        os.path.join(end_motifs_dir, "{sample}.end_motifs.tsv")
     threads: config.get("end_motifs_workers")
     params:
         kmer_length = config.get("end_motifs_kmer_length"),
@@ -338,11 +364,11 @@ rule end_motifs:
 
 rule interval_end_motifs:
     input:
-        data = os.path.join(out_dir, "{sample}.filtered.") + file_format,
+        data = os.path.join(filter_file_dir, "{sample}.filtered.") + file_format,
         refseq = os.path.join(sup_dir, f"{config.get('interval_end_motifs_refseq_file')}"),
-        intervals = os.path.join(sup_dir, f"{config.get('interval_file')}.filtered")
+        intervals = FILTERED_INTERVAL
     output:
-        os.path.join(out_dir, "{sample}.interval_end_motifs.tsv")
+        os.path.join(interval_end_motifs_dir, "{sample}.interval_end_motifs.tsv")
     threads: config.get("interval_end_motifs_workers")
     params:
         kmer_length = config.get("interval_end_motifs_kmer_length"),
@@ -385,9 +411,9 @@ rule interval_end_motifs:
 
 rule mds:
     input:
-        os.path.join(out_dir, "{sample}.end_motifs.tsv")
+        os.path.join(end_motifs_dir, "{sample}.end_motifs.tsv")
     output:
-        os.path.join(out_dir, "{sample}.mds.txt")
+        os.path.join(mds_dir, "{sample}.mds.txt")
     params:
         sep = config.get("mds_sep", " "),
         header = config.get("mds_header")
@@ -397,7 +423,7 @@ rule mds:
             "mds",
             input[0],  # Accessing the input file properly
         ]
-        if params.sep is not None and params.sep != " ":
+        if params.sep is not None and not params.sep.isspace():
             command_parts.append(f"-s {params.sep}")
         if params.header is not None:
             command_parts.append(f"--header {params.header}")
@@ -409,9 +435,9 @@ rule mds:
 
 rule interval_mds:
     input:
-        os.path.join(out_dir, "{sample}.interval_end_motifs.tsv")
+        os.path.join(interval_end_motifs_dir, "{sample}.interval_end_motifs.tsv")
     output:
-        os.path.join(out_dir, "{sample}.interval_mds.tsv")
+        os.path.join(interval_mds_dir, "{sample}.interval_mds.tsv")
     params:
         sep = config.get("interval_mds_sep", " "),
         header = config.get("interval_mds_header")
@@ -421,7 +447,7 @@ rule interval_mds:
             "interval-mds",
             input[0],  # Accessing the input file properly
         ]
-        if params.sep is not None and params.sep != " ":
+        if params.sep is not None and not params.sep.isspace():
             command_parts.append(f"-s {params.sep}")
         if params.header is not None:
             command_parts.append(f"--header {params.header}")
@@ -433,10 +459,10 @@ rule interval_mds:
 
 rule wps:
     input:
-        data = os.path.join(out_dir, "{sample}.filtered.") + file_format,
+        data = os.path.join(filter_file_dir, "{sample}.filtered.") + file_format,
         site_bed = os.path.join(sup_dir, f"{config.get('wps_site_bed')}")
     output:
-        os.path.join(out_dir, "{sample}.wps.bw")
+        os.path.join(wps_dir, "{sample}.wps.bw")
     threads: config.get("wps_workers")
     params:
         chrom_sizes = config.get("wps_chrom_sizes"),
@@ -469,11 +495,11 @@ rule wps:
 
 rule adjust_wps:
     input:
-        wps = os.path.join(out_dir, "{sample}.wps.bw"),
-        intervals = os.path.join(sup_dir, f"{config.get('interval_file')}" + ".filtered"),
+        wps = os.path.join(wps_dir, "{sample}.wps.bw"),
+        intervals = FILTERED_INTERVAL,
         chrom_sizes = os.path.join(sup_dir, f"{config.get('adjust_wps_chrom_sizes')}")
     output:
-        os.path.join(out_dir, "{sample}.adjust_wps.bw")
+        os.path.join(adjust_wps_dir, "{sample}.adjust_wps.bw")
     threads: config.get("adjust_wps_workers")
     params:
         interval_size = config.get("adjust_wps_interval_size"),
@@ -519,12 +545,12 @@ rule adjust_wps:
 
 rule delfi:
     input:
-        input_file = os.path.join(out_dir, "{sample}.filtered.") + file_format,
+        input_file = os.path.join(filter_file_dir, "{sample}.filtered.") + file_format,
         chrom_sizes = os.path.join(sup_dir, f"{config.get('delfi_chrom_sizes')}"),
         reference_file = os.path.join(sup_dir, f"{config.get('delfi_reference_file')}"),
         bins_file = os.path.join(sup_dir, f"{config.get('delfi_bins_file')}")
     output:
-        os.path.join(out_dir, "{sample}.delfi.bed")
+        os.path.join(delfi_dir, "{sample}.delfi.bed")
     threads: config.get("delfi_workers")
     params:
         blacklist_file = config.get("delfi_blacklist_file"),
@@ -578,11 +604,11 @@ rule delfi:
 
 rule cleavage_profile:
     input:
-        data = os.path.join(out_dir, "{sample}.filtered.") + file_format,
-        intervals = os.path.join(sup_dir, f"{config.get('interval_file')}.filtered"),
+        data = os.path.join(filter_file_dir, "{sample}.filtered.") + file_format,
+        intervals = FILTERED_INTERVAL,
         chrom_sizes = os.path.join(sup_dir, f"{config.get('cleavage_profile_chrom_sizes')}")
     output:
-        os.path.join(out_dir, "{sample}.cleavage_profile.bw")
+        os.path.join(cleavage_profile_dir, "{sample}.cleavage_profile.bw")
     threads: config.get("cleavage_profile_workers")
     params:
         min_len = config.get("cleavage_profile_min_len"),
@@ -620,10 +646,10 @@ rule cleavage_profile:
 
 rule agg_bw:
     input:
-        data = os.path.join(out_dir, "{sample}.cleavage_profile.bw"),
-        intervals = os.path.join(sup_dir, f"{config.get('interval_file')}.filtered")
+        data = os.path.join(cleavage_profile_dir, "{sample}.cleavage_profile.bw"),
+        intervals = FILTERED_INTERVAL
     output:
-        os.path.join(out_dir, "{sample}.agg_bw.wig")
+        os.path.join(agg_bw_dir, "{sample}.agg_bw.wig")
     threads: 1
     params:
         median_window_size = config.get("agg_bw_median_window_size"),
@@ -650,10 +676,10 @@ rule agg_bw:
 
 rule breakpoint_motifs:
     input:
-        data = os.path.join(out_dir, "{sample}.filtered.") + file_format,
+        data = os.path.join(filter_file_dir, "{sample}.filtered.") + file_format,
         refseq = os.path.join(sup_dir, f"{config.get('breakpoint_motifs_refseq_file')}")
     output:
-        os.path.join(out_dir, "{sample}.breakpoint_motifs.tsv")
+        os.path.join(breakpoint_motifs_dir, "{sample}.breakpoint_motifs.tsv")
     threads: config.get("breakpoint_motifs_workers")
     params:
         kmer_length = config.get("breakpoint_motifs_kmer_length"),
@@ -695,11 +721,11 @@ rule breakpoint_motifs:
 
 rule interval_breakpoint_motifs:
     input:
-        data = os.path.join(out_dir, "{sample}.filtered.") + file_format,
+        data = os.path.join(filter_file_dir, "{sample}.filtered.") + file_format,
         refseq = os.path.join(sup_dir, f"{config.get('interval_breakpoint_motifs_refseq_file')}"),
-        intervals = os.path.join(sup_dir, f"{config.get('interval_file')}.filtered")
+        intervals = FILTERED_INTERVAL
     output:
-        os.path.join(out_dir, "{sample}.interval_breakpoint_motifs.tsv")
+        os.path.join(interval_breakpoint_motifs_dir, "{sample}.interval_breakpoint_motifs.tsv")
     threads: config.get("interval_breakpoint_motifs_workers")
     params:
         kmer_length = config.get("interval_breakpoint_motifs_kmer_length"),
