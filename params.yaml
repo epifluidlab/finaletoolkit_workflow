@@ -32,6 +32,9 @@
 # frag_length_bins_chrom: "22"
 # frag_length_bins_start: 0
 # frag_length_bins_end: 41000000
+# frag_length_bins_summary_stats: True
+# frag_length_bins_short_fraction: 150
+# frag_length_bins_reference_file: "ref.fa"  # Required for CRAM input
 
 # Frag-length-intervals parameters
 # frag_length_intervals: True
@@ -40,6 +43,8 @@
 # frag_length_intervals_min_len: 50
 # frag_length_intervals_max_len: 350
 # frag_length_intervals_workers: 1
+# frag_length_intervals_short_reads: 150
+# frag_length_intervals_reference_file: "ref.fa"  # Required for CRAM input
 
 # coverage: True
 # coverage_mapq: 30
@@ -49,13 +54,15 @@
 # coverage_workers: 1
 # coverage_normalize: True
 # coverage_scale_factor: 1000000
+# coverage_reference_file: "ref.fa"  # Required for CRAM input
 
 # end_motifs: True
+# end_motifs_refseq_file: "ref.fa"  # A .2bit or FASTA (.fa, .fasta, .fna) file
 # end_motifs_kmer_length: 5
 # end_motifs_min_len: 50
 # end_motifs_max_len: 350
-# end_motifs_no_both_strands: True
-# end_motifs_negative_strand: False
+# end_motifs_single_strand: True  # When True, only considers one strand (-B flag)
+# end_motifs_negative_strand: False  # When True (requires single_strand: True), uses negative strand
 # end_motifs_mapq: 30
 # end_motifs_workers: 1
 
@@ -86,6 +93,7 @@
 # wps_max_len: 180
 # wps_mapq: 30
 # wps_workers: 4
+# wps_reference_file: "ref.fa"  # Required for CRAM input
 
 # adjust_wps: True
 # adjust_wps_interval_file: "sites.bed"
@@ -122,7 +130,28 @@
 # cleavage_profile_left: 2000
 # cleavage_profile_right: 2000
 # cleavage_profile_workers: 8
+# cleavage_profile_reference_file: "ref.fa"  # Required for CRAM input
 
 # agg_bw: True
 # agg_bw_median_window_size: 1
 # agg_bw_mean: True
+
+# breakpoint_motifs: True
+# breakpoint_motifs_refseq_file: "ref.fa"  # A .2bit or FASTA (.fa, .fasta, .fna) file
+# breakpoint_motifs_kmer_length: 4
+# breakpoint_motifs_min_len: 50
+# breakpoint_motifs_max_len: 350
+# breakpoint_motifs_single_strand: False
+# breakpoint_motifs_negative_strand: False
+# breakpoint_motifs_mapq: 30
+# breakpoint_motifs_workers: 1
+
+# interval_breakpoint_motifs: True
+# interval_breakpoint_motifs_refseq_file: "ref.fa"  # A .2bit or FASTA (.fa, .fasta, .fna) file
+# interval_breakpoint_motifs_kmer_length: 4
+# interval_breakpoint_motifs_min_len: 50
+# interval_breakpoint_motifs_max_len: 350
+# interval_breakpoint_motifs_single_strand: False
+# interval_breakpoint_motifs_negative_strand: False
+# interval_breakpoint_motifs_mapq: 30
+# interval_breakpoint_motifs_workers: 1

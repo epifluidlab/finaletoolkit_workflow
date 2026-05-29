@@ -189,9 +189,12 @@ rule frag_length_bins:
         start = config.get("frag_length_bins_start"),
         end = config.get("frag_length_bins_end"),
         summary_stats = config.get("frag_length_bins_summary_stats", False),
-        short_fraction = config.get("frag_length_bins_short_fraction")
+        short_fraction = config.get("frag_length_bins_short_fraction"),
+        reference_file = config.get("frag_length_bins_reference_file")
     run:
         command_parts = [f"finaletoolkit frag-length-bins {input}"]
+        if params.reference_file is not None:
+            command_parts.append(f"-r {os.path.join(sup_dir, params.reference_file)}")
         if params.mapq is not None:
             command_parts.append(f"-q {params.mapq}")
         if params.bin_size is not None:
@@ -231,7 +234,8 @@ rule frag_length_intervals:
         policy = config.get("frag_length_intervals_policy"),
         mapq = config.get("frag_length_intervals_mapq"),
         workers = config.get("frag_length_intervals_workers"),
-        short_reads = config.get("frag_length_intervals_short_reads")
+        short_reads = config.get("frag_length_intervals_short_reads"),
+        reference_file = config.get("frag_length_intervals_reference_file")
     run:
         command_parts = [
             "finaletoolkit",
@@ -240,6 +244,8 @@ rule frag_length_intervals:
             input.intervals,
         ]
 
+        if params.reference_file is not None:
+            command_parts.append(f"-r {os.path.join(sup_dir, params.reference_file)}")
         if params.min_len is not None:
             command_parts.append(f"-min {params.min_len}")
         if params.max_len is not None:
@@ -274,7 +280,8 @@ rule coverage:
         scale_factor = config.get("coverage_scale_factor"),
         intersect_policy = config.get("coverage_intersect_policy"),
         mapq = config.get("coverage_mapq"),
-        workers = config.get("coverage_workers")
+        workers = config.get("coverage_workers"),
+        reference_file = config.get("coverage_reference_file")
     run:
         command_parts = [
             "finaletoolkit",
@@ -283,6 +290,8 @@ rule coverage:
             input.intervals,
         ]
 
+        if params.reference_file is not None:
+            command_parts.append(f"-r {os.path.join(sup_dir, params.reference_file)}")
         if params.min_len is not None:
             command_parts.append(f"-min {params.min_len}")
         if params.max_len is not None:
@@ -462,9 +471,12 @@ rule wps:
         min_len = config.get("wps_min_len"),
         max_len = config.get("wps_max_len"),
         mapq = config.get("wps_mapq"),
-        workers = config.get("wps_workers")
+        workers = config.get("wps_workers"),
+        reference_file = config.get("wps_reference_file")
     run:
         command_parts = ["finaletoolkit", "wps", input.data, input.site_bed]
+        if params.reference_file is not None:
+            command_parts.append(f"-r {os.path.join(sup_dir, params.reference_file)}")
         if params.chrom_sizes is not None:
             command_parts.append(f"-c {os.path.join(sup_dir, params.chrom_sizes)}")
         if params.interval_size is not None:
@@ -607,7 +619,8 @@ rule cleavage_profile:
         mapq = config.get("cleavage_profile_mapq"),
         left = config.get("cleavage_profile_left"),
         right = config.get("cleavage_profile_right"),
-        workers = config.get("cleavage_profile_workers")
+        workers = config.get("cleavage_profile_workers"),
+        reference_file = config.get("cleavage_profile_reference_file")
     run:
         command_parts = [
             "finaletoolkit",
@@ -617,6 +630,8 @@ rule cleavage_profile:
             input.chrom_sizes,
         ]
 
+        if params.reference_file is not None:
+            command_parts.append(f"--reference-file {os.path.join(sup_dir, params.reference_file)}")
         if params.min_len is not None:
             command_parts.append(f"-min {params.min_len}")
         if params.max_len is not None:
