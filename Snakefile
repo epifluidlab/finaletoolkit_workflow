@@ -421,15 +421,17 @@ rule mds:
         command_parts = [
             "finaletoolkit",
             "mds",
-            input[0],  # Accessing the input file properly
         ]
         if params.sep is not None and not params.sep.isspace():
             command_parts.append(f"-s {params.sep}")
         if params.header is not None:
             command_parts.append(f"--header {params.header}")
 
+        command_parts.append(input[0])
+        command_parts.append(f" > {output[0]}")
+
         # Redirect output to the file
-        command = " ".join(command_parts) + f" {output[0]}"
+        command = " ".join(command_parts)
         print("Running: ", command)
         shell(f"{command}")
 
@@ -444,16 +446,18 @@ rule interval_mds:
     run:
         command_parts = [
             "finaletoolkit",
-            "interval-mds",
-            input[0],  # Accessing the input file properly
+            "interval-mds"
         ]
         if params.sep is not None and not params.sep.isspace():
             command_parts.append(f"-s {params.sep}")
         if params.header is not None:
             command_parts.append(f"--header {params.header}")
 
+        command_parts.append(input[0])
+        command_parts.append(output[0])
+
         # Redirect output to the file
-        command = " ".join(command_parts) + f" {output[0]}"
+        command = " ".join(command_parts)
         print("Running: ", command)
         shell(f"{command}")
 
@@ -472,6 +476,10 @@ rule wps:
         max_len = config.get("wps_max_len"),
         mapq = config.get("wps_mapq"),
         workers = config.get("wps_workers")
+    resources: # HACK: used to address an error
+        cpus = config.get("wps_workers", 16),
+        mem_mb = config.get("wps_mem_mb", 64000),
+        time_min = config.get("wps_time_min", 1440)
     run:
         command_parts = ["finaletoolkit", "wps", input.data, input.site_bed]
         if params.chrom_sizes is not None:

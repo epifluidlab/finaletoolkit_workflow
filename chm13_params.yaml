@@ -1,0 +1,129 @@
+# Below is a sample configuration for extracting coverage features
+
+input_dir: "input/chm13"
+output_dir: "output"
+supplement_dir: "supplement" 
+interval_file: "chm13v2_commonchrom_100kb_bins.bed"
+file_format: "bam"
+
+# Finaletoolkit filter-file parameters
+
+# filter_file: False
+# filter_file_mapq: 30
+# filter_file_min_length: 50
+# filter_file_max_length: 9999
+# filter_file_blacklist_file: "blacklist.bed"
+# filter_file_whitelist_file: "whitelist.bed"
+# filter_file_intersect_policy: "midpoint"
+# filter_file_workers: 1
+
+# Mappability parameters
+
+# mappability_file: "mappability.bw"
+# mappability_threshold: 0.00
+
+# Frag-length-bins parameters
+# frag_length_bins: True
+# frag_length_bins_bin_size: 10
+# frag_length_bins_mapq: 30
+# frag_length_bins_policy: "midpoint"
+# frag_length_bins_min_len: 0
+# frag_length_bins_max_len: 350
+# frag_length_bins_chrom: "22"
+# frag_length_bins_start: 0
+# frag_length_bins_end: 41000000
+
+# Frag-length-intervals parameters
+# frag_length_intervals: True
+# frag_length_intervals_mapq: 30
+# frag_length_intervals_policy: "midpoint"
+# frag_length_intervals_min_len: 0
+# frag_length_intervals_max_len: 350
+# frag_length_intervals_workers: 8
+
+# coverage: True
+# coverage_mapq: 30
+# coverage_intersect_policy: "midpoint"
+# coverage_min_len: 0
+# coverage_max_len: 350
+# coverage_workers: 8
+# coverage_normalize: True
+# coverage_scale_factor: 1000000
+
+# end_motifs: True
+# end_motifs_kmer_length: 4
+# end_motifs_min_len: 0
+# end_motifs_max_len: 600
+# end_motifs_no_both_strands: True
+# end_motifs_refseq_file: "chm13v2.0.2bit"
+# end_motifs_negative_strand: False
+# end_motifs_mapq: 20
+# end_motifs_workers: 8
+
+# interval_end_motifs: True
+# interval_end_motifs_refseq_file: "chm13v2.0.2bit"
+# interval_end_motifs_kmer_length: 4
+# interval_end_motifs_min_len: 0
+# interval_end_motifs_max_len: 600
+# interval_end_motifs_single_strand: False
+# interval_end_motifs_negative_strand: False
+# interval_end_motifs_mapq: 20
+# interval_end_motifs_workers: 4
+
+# mds: True
+# mds_sep: "\t"
+# mds_header: 0
+
+# interval_mds: True
+# interval_mds_sep: "\t"
+# interval_mds_header: 0
+
+# wps: True
+# wps_chrom_sizes: "chm13v2.0.chrom.sizes"
+# wps_site_bed: "chm13v2_100kb_bins.bed"
+# wps_interval_size: 100000
+# wps_window_size: 120
+# wps_min_len: 120
+# wps_max_len: 180
+# wps_mapq: 30
+# wps_workers: 4
+
+# adjust_wps: True
+# adjust_wps_interval_file: "sites.bed"
+# adjust_wps_chrom_sizes: "ref.chrom.sizes"
+# adjust_wps_interval_size: 5000
+# adjust_wps_median_window_size: 200
+# adjust_wps_savgol_window_size: 21
+# adjust_wps_savgol_poly_deg: 2
+# adjust_wps_exclude_savgol: True
+# adjust_wps_workers: 4
+# adjust_wps_mean: False
+# adjust_wps_subtract_edges: True
+# adjust_wps_edge_size: 500 # Breaks functionality for some reason
+
+# delfi: True
+# Only one of the two parameters below need to be given
+# delfi_gap_file: "ref.gap.bed"
+# delfi_gap_reference_genome: "hg38"
+# delfi_chrom_sizes: "ref.chrom.sizes"
+# delfi_reference_file: "ref.2bit"
+# delfi_bins_file: "interval.bins"
+# delfi_no_gc_correct: False
+# delfi_keep_nocov: False
+# delfi_no_merge_bins: True
+# delfi_window_size: 5000000
+# delfi_mapq: 30
+# delfi_workers: 4
+
+# cleavage_profile: True
+# cleavage_profile_chrom_sizes: "ref.chrom.sizes"
+# cleavage_profile_min_len: 50
+# cleavage_profile_max_len: 350
+# cleavage_profile_mapq: 30
+# cleavage_profile_left: 2000
+# cleavage_profile_right: 2000
+# cleavage_profile_workers: 8
+
+# agg_bw: True
+# agg_bw_median_window_size: 1
+# agg_bw_mean: True
