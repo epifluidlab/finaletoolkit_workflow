@@ -1,0 +1,79 @@
+# =============================================================================
+# Example config: 500 kb genome-wide feature extraction on hg38.
+# Pair with:  scripts/setup_reference.sh hg38 supplement 500
+#             (hg38 mappability is built separately, see scripts/genmap_mappability.sh)
+# Run with:   snakemake --configfile params.hg38.yaml --cores <N> \
+#               --rerun-incomplete --default-resources "tmpdir='./tmp'"
+# =============================================================================
+
+input_dir:  "input"
+output_dir: "output"
+supplement_dir: "supplement"
+interval_file: "hg38.500kb.bins"
+file_format: "bed.gz"
+
+# --- Pre-filter: MAPQ>=30, cfDNA size window 50-350 bp, ENCODE blacklist ---
+filter_file: True
+filter_file_mapq: 30
+filter_file_min_length: 50
+filter_file_max_length: 350
+filter_file_blacklist_file: "hg38.blacklist.bed"
+filter_file_intersect_policy: "midpoint"
+filter_file_workers: 4
+
+# --- Mappability: keep 500 kb bins with >=90% mean 45-mer mappability ---
+mappability_file: "hg38.45mer.mappability.bw"
+mappability_threshold: 0.90
+
+# --- Fragment-length intervals (per 500 kb bin) ---
+frag_length_intervals: True
+frag_length_intervals_mapq: 30
+frag_length_intervals_policy: "midpoint"
+frag_length_intervals_min_len: 50
+frag_length_intervals_max_len: 350
+frag_length_intervals_workers: 1
+
+# --- Genome-wide end-motif proportions (4-mer) + MDS ---
+end_motifs: True
+end_motifs_refseq_file: "hg38.2bit"
+end_motifs_kmer_length: 4
+end_motifs_min_len: 50
+end_motifs_max_len: 350
+end_motifs_mapq: 30
+end_motifs_workers: 4
+mds: True
+
+# --- Coverage (per 500 kb bin, normalized to 1e6) ---
+coverage: True
+coverage_mapq: 30
+coverage_intersect_policy: "any"
+coverage_min_len: 50
+coverage_max_len: 350
+coverage_workers: 1
+coverage_normalize: True
+coverage_scale_factor: 1000000
+
+# --- Interval end-motifs (4-mer per 500 kb bin) + regional MDS ---
+interval_end_motifs: True
+interval_end_motifs_refseq_file: "hg38.2bit"
+interval_end_motifs_kmer_length: 4
+interval_end_motifs_min_len: 50
+interval_end_motifs_max_len: 350
+interval_end_motifs_single_strand: False
+interval_end_motifs_mapq: 30
+interval_end_motifs_workers: 4
+interval_mds: True
+
+# --- DELFI (500 kb bins, GC-corrected) ---
+delfi: True
+delfi_chrom_sizes: "hg38.delfi.chrom.sizes"   # chr1-22, X, Y (DELFI needs centromere-bearing contigs)
+delfi_reference_file: "hg38.2bit"
+delfi_bins_file: "hg38.500kb.bins.filtered"
+delfi_gap_file: "hg38.gap.bed"                # BED4 centromere/telomere annotations (finaletoolkit gap-bed)
+delfi_blacklist_file: "hg38.blacklist.bed"
+delfi_no_gc_correct: False
+delfi_keep_nocov: True
+delfi_no_merge_bins: True
+delfi_window_size: 5000000
+delfi_mapq: 30
+delfi_workers: 4

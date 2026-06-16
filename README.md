@@ -1,133 +1,146 @@
+<!-- Swap the placeholder src below for a kawaii irasutoya image (DNA / test tube),
+     matching the title style of the other ravibandaru-lab repos. -->
+# <img alt="dna with letters FT" src="https://github.com/epifluidlab/FinaleToolkit/blob/b99b38e22a3b07ee9b7e0fa44a488a1eb5442efe/docs/_static/finaletoolkit_logo_rounded.png?raw=true" height="60"> finaletoolkit_workflow
 
-# FinaleToolkit Workflow
+A Snakemake workflow that automates cell-free DNA fragmentation feature extraction with
+[FinaleToolkit](https://github.com/epifluidlab/FinaleToolkit) — supporting **hg38** and
+**T2T-CHM13**, parallel processing, SLURM, and BED/BAM/CRAM inputs.
 
-This Snakemake workflow automates the extraction of epigenomic features using Finaletoolkit, supporting parallel processing, SLURM, and common genomic file formats.
+### Contents
 
-## Key Features
+|     Installation     |     Reference Setup     |     Usage     |     Parameters     |
+|:--------------------:|:-----------------------:|:-------------:|:------------------:|
+| [Install](#installation) | [Reference setup](#reference--supplement-setup) | [Usage](#usage) | [YAML parameters](#yaml-parameters) |
+| [Genomes](#genome-support) | [Mappability](#mappability) | [SLURM](#slurm-execution) | [Output naming](#output-file-naming) |
 
-*   **Finaletoolkit Support:** Implements most Finaletoolkit CLI commands (excluding `gap-bed` and `delfi-gc-correct`).
-*   **File Compatibility:** Works with BED, BAM, and CRAM files.
-*   **Mappability Filtering:** Filters interval files based on mappability scores.
-*   **Parallelization:** Supports multi-core processing.
-*   **SLURM Integration:** Enables job submission to SLURM clusters.
+### Genome support
 
-## Installation
+Two genomes are supported out of the box, each with a runnable example config and a one-command
+reference setup:
 
-Reference the following commands for setup and execution:
+| Genome | Example config | Setup command |
+|:--|:--|:--|
+| hg38 | [`params.hg38.yaml`](./params.hg38.yaml) | `scripts/setup_reference.sh hg38 supplement 500` |
+| T2T-CHM13 (hs1) | [`params.t2t-chm13.yaml`](./params.t2t-chm13.yaml) | `scripts/setup_reference.sh t2t-chm13 supplement 500` |
 
-```bash
-$ git clone https://github.com/epifluidlab/finaletoolkit_workflow # Download the repository containing the workflow
-$ cd finaletoolkit_workflow # Enter the repository folder
-$ conda env create -f environment.yml # Create environment with relevant conda packages
-$ conda activate finaletoolkit_workflow # Use environment for finaletoolkit-workflow
-$ snakemake --configfile params.yaml --cores 4 --jobs 2 # Run with parameters set in params.yaml
-```
-
-## Dependencies
-
-This workflow relies on the following tools being installed and accessible by your system PATH. FinaleToolkit and other
-packages may be installed through bioconda in `conda` (already installed if you activated the conda environment from
-`environment.yml`)
-
-* `finaletoolkit`: A command-line tool for epigenomic feature extraction.
-* `snakemake`: A workflow engine that determines which operations ("rules") to carry out on genomic files.
-* `bedtools`: A suite of utilities for working with and manipulating genomic intervals.
-* `htslib`: A library that includes `bgzip`, necessary to GZIP uncompressed BED files. 
-* `samtools`: A set of tools for manipulating and analyzing sequencing BAM/CRAM data
-
-## Quick Start
-
-1.  **Configuration:**  Create a `params.yaml` file defining your input, output, and processing options (reference below
-sections).
-2.  **Basic Execution:** Run the workflow in the directory with the `Snakefile` present through the following command:
-```bash
-cd finaletoolkit_workflow # Enter the folder with the workflow Snakefile
-
-# --cores: Number of CPU cores to use.
-# --jobs: Maximum number of concurrent jobs (limited by --cores).
-snakemake --configfile params.yaml --cores <cores> --jobs <jobs>
-```
-3.  **SLURM Execution:** Before using this workflow with SLURM, first install
-the snakemake executor plugin: slurm:
+### Installation
 
 ```bash
-conda activate finaletoolkit_workflow # activate the conda environment if not already activated
-conda install bioconda::snakemake-executor-plugin-slurm # install executor plugin from bioconda
+git clone https://github.com/epifluidlab/finaletoolkit_workflow
+cd finaletoolkit_workflow
+conda env create -f environment.yml
+conda activate finaletoolkit_workflow
 ```
 
-Submit to SLURM to run the workflow through the command below (see `slurm_profile/config.yaml`
-for default settings).
+Core tools (installed by the environment): `finaletoolkit`, `snakemake`, `bedtools`, `htslib`,
+`samtools`, `pybigwig`.
+
+### Reference & supplement setup
+
+The workflow needs per-genome supplement files (chrom sizes, `.2bit`, interval bins, blacklist, gap, and
+a mappability bigWig). `scripts/setup_reference.sh` builds all of them, with the exact filenames the
+example configs expect:
+
 ```bash
-cd finaletoolkit_workflow # Enter the folder with the workflow Snakefile
+# T2T-CHM13: UCSC hs1 2bit/sizes + BEDbase excluderanges blacklist + Zenodo mappability track
+scripts/setup_reference.sh t2t-chm13 supplement 500
 
-# Runs the command through params specified in slurm_profile/config.yaml in the background (&),
-# Redirects all command-related output to snakemake.log
-snakemake  --profile slurm_profile > snakemake.log 2>&1 &
+# hg38: UCSC 2bit/sizes + Boyle-Lab Blacklist + finaletoolkit gap-bed + Zenodo mappability track
+scripts/setup_reference.sh hg38 supplement 500
 ```
 
-## Workflow Structure
+This writes into `supplement/`:
 
-*   **Input:**
-    *   Genomic data files are located in the directory specified by `input_dir`.
-    *   Supplemental files (blacklist, mappability, intervals) are located in the directory specified by
-    `supplement_dir`.
-*   **Output:** Processed files are written to the directory specified by `output_dir`.
-*   **Configuration:** `params.yaml` dictates workflow parameters.
+```
+<g>.chrom.sizes   <g>.2bit   <g>.<N>kb.bins   <g>.delfi.chrom.sizes   <g>.blacklist.bed   <g>.45mer.mappability.bw
+                  ( + hg38.gap.bed for hg38 only — T2T-CHM13 is gap-free )
+```
 
-## YAML Parameters
+(`g` = `hg38` or `chm13`). `<g>.delfi.chrom.sizes` is chr1–22, X, Y (DELFI requires
+centromere-bearing contigs; the general bins keep chrM/chrY). Everything except the mappability bigWig is built live from public sources
+(UCSC, Boyle-Lab Blacklist, BEDbase). The `*.bins.filtered` interval file used by DELFI is generated
+automatically during the run by the mappability filter.
 
-*   **Required:**
-    *   `input_dir`: Path to the input directory. Defaults to `input` if not specified
-    *   `output_dir`: Path to the output directory. Defaults to `output` if not specified.
-    *    `file_format`: `"bed.gz"`, `"frag.gz"`, `"bam"`, or `"cram"` indicating the format of the input files. Defaults
-    to `bed.gz` if not specified.
+### Usage
 
-*   **Optional:**
-    *   `supplement_dir`: Path to supplemental files directory. Defaults to `supplement` if not specified. 
-    *   `mappability_file`: Name of the bigWig mappability file in `supplement_dir`.
-    *    `mappability_threshold`: Minimum average mappability score (0.0-1.0) for interval filtering.
-    *  `interval_file`: Path to interval file in `supplement_dir`.
-    *   `finaletoolkit_command: True/False`: Enables a specific Finaletoolkit command, using hyphens replaced by
-    underscores (e.g., `adjust-wps` becomes `adjust_wps: True`).
-    *   `finaletoolkit_command_flag: value`: Sets flags for a Finaletoolkit command (e.g.,
-    `adjust_wps_max_length: 250`). Flags that take input files, output files, or `verbose` flags do not exist here.  `mapping_quality` is shortened to `mapq` for flags (e.g., `coverage_mapping_quality` becomes `coverage_mapq`).
+1. Put input fragment/alignment files in `input/` (or set `input_dir`).
+2. Pick a config and run:
 
-## Output File Naming
+```bash
+snakemake --configfile params.t2t-chm13.yaml --cores <N> \
+  --rerun-incomplete --default-resources "tmpdir='./tmp'"
+```
 
-*   **Filtered Files:** Files are always given a `.filtered` extension before the file format when passed into the output directory (e.g., `file.filtered.bed.gz`).
-*   **Command-Processed Files:** Files processed by a Finaletoolkit command have the command name (with underscores) inserted before their format (e.g., `file.frag_length_bins.bed.gz`).
-*   **Multiple Commands:** Input files will be processed for each enabled Finaletoolkit command.
+`--cores` sets CPU cores; `--jobs` caps concurrent jobs. Use `-n` for a dry run to preview the DAG.
 
-## Mappability Filtering
+### SLURM execution
 
-*   Uses ``mappability_file`` and ``mappability_threshold`` (float from 0-1) to filter intervals specified by ``interval_file``.
-*   Interval files used in Finaletoolkit commands are pre-filtered by mappability quality to at least the threshold if set. 
+The SLURM executor plugin is already in `environment.yml`. Set your account/partition in
+[`slurm_profile/config.yaml`](./slurm_profile/config.yaml), then submit:
 
-## Using Finaletoolkit Commands
+```bash
+./ftk_exc.sh params.t2t-chm13.yaml ./tmp     # runs in the background -> snakemake.log
+```
 
-*   Finaletoolkit commands are specified in `params.yaml` with underscores instead of hyphens.
-*   Set command flags by appending `_<flag_name>` to the converted command name.
-*   This workflow respects command dependencies.  For example, `adjust-wps` requires `wps` output, and `mds` needs `end-motifs`.
+### Mappability
 
-## `filter-file` Command
+Interval bins are kept only if their **mean** mappability over the bin is ≥ `mappability_threshold`
+(filtered by `scripts/mappability_filter.py`). Because the filter uses the per-bin mean, the *kind* of
+track matters:
 
-*   If only `filter-file` is set to `True`, the output of the workflow will be only the filtered files.
-*   If any other Finaletoolkit commands are set, they will use the output of `filter-file` as their input.
+- **Continuous track** (recommended) — each position = `1 / (k-mer occurrences)`, so the bin mean is the
+  **average mappability** (a position that maps twice contributes 0.5). The shipped **hg38** and
+  **T2T-CHM13** tracks are both continuous 45-mer GenMap tracks (`-E 0`), hosted on Zenodo
+  ([record 20724659](https://zenodo.org/records/20724659)) and fetched automatically by
+  `setup_reference.sh`. To build one for another genome / k-mer:
 
-## Notes
+  ```bash
+  conda create -n genmap -c bioconda -c conda-forge genmap ucsc-bedgraphtobigwig
+  conda activate genmap
+  scripts/genmap_mappability.sh genome.fa supplement/<g>.chrom.sizes \
+      supplement/<g>.45mer.mappability.bw 45 0   # memory/time-heavy: use a compute node
+  ```
 
-*   This workflow uses `verbose` for Finaletoolkit commands by default.
-*   Deprecated flags cannot be used in this workflow.
+T2T-CHM13 specifics: the assembly is gap-free and has no finaletoolkit gap preset, so DELFI runs
+**without a gap file** (centromeres are already removed by the mappability + blacklist filtering); the
+blacklist is the [`excluderanges`](https://dozmorovlab.github.io/excluderanges/) `T2T.excluderanges` set.
+DELFI uses `<g>.delfi.chrom.sizes` (chr1–22, X, Y) because finaletoolkit crashes on contigs without a
+centromere (e.g. chrM) when a gap file is supplied.
 
+### Data availability
 
-## Citation
-Li JW, Bandaru R, Baliga K, Liu Y. FinaleToolkit: accelerating cell-free DNA fragmentation analysis with a high-speed computational toolkit. Bioinform Adv. 2025;5(1):vbaf236. Published 2025 Sep 26. doi:10.1093/bioadv/vbaf236
+The continuous 45-mer mappability bigWigs (hg38, T2T-CHM13) are deposited in the **FinaleToolkit
+Dataset** on Zenodo — DOI [10.5281/zenodo.20724659](https://doi.org/10.5281/zenodo.20724659)
+(concept DOI [10.5281/zenodo.14284132](https://doi.org/10.5281/zenodo.14284132) always resolves to the
+latest version). All other supplement files are built live from public sources (UCSC, Boyle-Lab
+Blacklist, BEDbase) by `setup_reference.sh`.
 
-## Contact
-- Kundan Baliga: kundanbal2969@k12.ipsd.org
+### YAML parameters
+
+* **Required:** `input_dir`, `output_dir`, `file_format` (`bed.gz`, `frag.gz`, `bam`, or `cram`).
+* **Optional:** `supplement_dir`, `interval_file`, `mappability_file`, `mappability_threshold`, and any
+  FinaleToolkit command.
+* **Commands:** enable a FinaleToolkit command with underscores instead of hyphens (e.g. `adjust-wps`
+  → `adjust_wps: True`); set flags by appending `_<flag>` (e.g. `coverage_mapq: 30`). The workflow
+  respects command dependencies (e.g. `mds` needs `end_motifs`). See [`params.yaml`](./params.yaml) for
+  the fully annotated list of every option.
+
+### Output file naming
+
+* **Filtered files** get `.filtered` before the format (e.g. `file.filtered.bed.gz`).
+* **Command outputs** insert the command name (e.g. `file.frag_length_intervals.bed`).
+* Each input is processed for every enabled command.
+
+### Citation
+Li JW, Bandaru R, Baliga K, Liu Y (2025). *FinaleToolkit: accelerating cell-free DNA fragmentation
+analysis with a high-speed computational toolkit.* **Bioinformatics Advances**.
+![DOI](https://img.shields.io/badge/DOI-10.1093%2Fbioadv%2Fvbaf236-DDC7A6?style=flat-square)
+
+### Contact
 - Ravi Bandaru: ravi.bandaru@northwestern.edu
+- James Li: james.li3@northwestern.edu
+- Kundan Baliga: kundanbal2969@k12.ipsd.org
 - Yaping Liu: yaping@northwestern.edu
 
-## License
-This project falls under an MIT license. See the included `LICENSE` file for details.
-
+### License
+See [`LICENSE`](./LICENSE).
