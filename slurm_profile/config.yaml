@@ -1,9 +1,20 @@
+# Snakemake SLURM profile.  Run with:  snakemake --profile slurm_profile
 executor: slurm
+
+# Default config; override on the CLI with --configfile params.t2t-chm13.yaml (etc.)
 configfile: "params.yaml"
-jobs: 4 # Up to 4 jobs running in parallel
+
+jobs: 4
+
 default-resources:
-  slurm_account: "acct"
-  slurm_partition: "partition"
-  mem_mb: 2000 # Up to 2GB per job
-  runtime: 2 # Up to 2 minutes per job
-  cpus_per_task: 4 # Up to 8 cores per job
+  # REQUIRED: set these to your cluster's account and partition before running.
+  slurm_account: "CHANGE_ME"
+  slurm_partition: "CHANGE_ME"
+  
+  # Per-job limits — raise these for whole-genome feature extraction. The tiny
+  # defaults below only suit a trivial test; DELFI / end-motifs need more.
+  mem_mb: 16000      # 16 GB per job
+  runtime: 240       # minutes (4 h) per job
+  cpus_per_task: 4
+
+  tmpdir: "'./tmp'"
