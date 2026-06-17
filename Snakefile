@@ -584,12 +584,15 @@ rule delfi:
         if params.blacklist_file:
             command_parts.append(f"-b {os.path.join(sup_dir, params.blacklist_file)}")
 
-        if not params.gap_file:
+        if params.gap_file:
+            command_parts.append(f"-g {os.path.join(sup_dir, params.gap_file)}")
+        elif params.gap_reference_genome:
             gap_bed_output = os.path.join(sup_dir, f"{params.gap_reference_genome}.gap.bed")
             shell(f"finaletoolkit gap-bed {params.gap_reference_genome} {gap_bed_output}")
             command_parts.append(f"-g {gap_bed_output}")
-        else:
-            command_parts.append(f"-g {os.path.join(sup_dir, params.gap_file)}")
+        # else: neither set -> run DELFI without a gap file (no centromere/telomere
+        # masking; appropriate for gap-free assemblies like T2T-CHM13). NB: when a gap
+        # file IS used, every contig in delfi_chrom_sizes must have a centromere entry.
 
         if params.no_gc_correct:
             command_parts.append("-G")

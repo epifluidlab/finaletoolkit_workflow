@@ -1,0 +1,80 @@
+# =============================================================================
+# Example config: 500 kb genome-wide feature extraction on T2T-CHM13 (hs1).
+# Pair with:  scripts/setup_reference.sh t2t-chm13 supplement 500
+# Run with:   snakemake --configfile params.t2t-chm13.yaml --cores <N> \
+#               --rerun-incomplete --default-resources "tmpdir='./tmp'"
+# All supplement files below are produced by setup_reference.sh.
+# =============================================================================
+
+input_dir:  "input"
+output_dir: "output"
+supplement_dir: "supplement"
+interval_file: "chm13.500kb.bins"
+file_format: "bed.gz"
+
+# --- Pre-filter: MAPQ>=30, cfDNA size window 50-350 bp, blacklist ---
+filter_file: True
+filter_file_mapq: 30
+filter_file_min_length: 50
+filter_file_max_length: 350
+filter_file_blacklist_file: "chm13.blacklist.bed"
+filter_file_intersect_policy: "midpoint"
+filter_file_workers: 4
+
+# --- Mappability: keep 500 kb bins with >=90% mean 45-mer mappability ---
+mappability_file: "chm13.45mer.mappability.bw"
+mappability_threshold: 0.90
+
+# --- Fragment-length intervals (per 500 kb bin) ---
+frag_length_intervals: True
+frag_length_intervals_mapq: 30
+frag_length_intervals_policy: "midpoint"
+frag_length_intervals_min_len: 50
+frag_length_intervals_max_len: 350
+frag_length_intervals_workers: 1
+
+# --- Genome-wide end-motif proportions (4-mer) + MDS ---
+end_motifs: True
+end_motifs_refseq_file: "chm13.2bit"
+end_motifs_kmer_length: 4
+end_motifs_min_len: 50
+end_motifs_max_len: 350
+end_motifs_mapq: 30
+end_motifs_workers: 4
+mds: True
+
+# --- Coverage (per 500 kb bin, normalized to 1e6) ---
+coverage: True
+coverage_mapq: 30
+coverage_intersect_policy: "any"
+coverage_min_len: 50
+coverage_max_len: 350
+coverage_workers: 1
+coverage_normalize: True
+coverage_scale_factor: 1000000
+
+# --- Interval end-motifs (4-mer per 500 kb bin) + regional MDS ---
+interval_end_motifs: True
+interval_end_motifs_refseq_file: "chm13.2bit"
+interval_end_motifs_kmer_length: 4
+interval_end_motifs_min_len: 50
+interval_end_motifs_max_len: 350
+interval_end_motifs_single_strand: False
+interval_end_motifs_mapq: 30
+interval_end_motifs_workers: 4
+interval_mds: True
+
+# --- DELFI (500 kb bins, GC-corrected) ---
+delfi: True
+delfi_chrom_sizes: "chm13.delfi.chrom.sizes"   # chr1-22, X, Y (DELFI needs centromere-bearing contigs)
+delfi_reference_file: "chm13.2bit"
+delfi_bins_file: "chm13.500kb.bins.filtered"
+# no delfi_gap_file / delfi_gap_reference_genome: T2T-CHM13 is gap-free -> DELFI runs
+# without centromere masking (mappability + blacklist already exclude those regions).
+delfi_blacklist_file: "chm13.blacklist.bed"
+delfi_no_gc_correct: False
+delfi_keep_nocov: True
+delfi_no_merge_bins: True
+delfi_window_size: 5000000
+delfi_mapq: 30
+delfi_workers: 4
