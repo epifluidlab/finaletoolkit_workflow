@@ -6,6 +6,8 @@ A Snakemake workflow that automates cell-free DNA fragmentation feature extracti
 [FinaleToolkit](https://github.com/epifluidlab/FinaleToolkit) — supporting **hg38** and
 **T2T-CHM13**, parallel processing, SLURM, and BED/BAM/CRAM inputs.
 
+[![Docs](https://img.shields.io/badge/docs-epifluidlab.github.io-836eaa?style=flat-square)](https://epifluidlab.github.io/FinaleToolkit/documentation/workflow/)
+
 ### Contents
 
 |     Installation     |     Reference Setup     |     Usage     |     Parameters     |
@@ -122,8 +124,9 @@ Blacklist, BEDbase) by `setup_reference.sh`.
   FinaleToolkit command.
 * **Commands:** enable a FinaleToolkit command with underscores instead of hyphens (e.g. `adjust-wps`
   → `adjust_wps: True`); set flags by appending `_<flag>` (e.g. `coverage_mapq: 30`). The workflow
-  respects command dependencies (e.g. `mds` needs `end_motifs`). See [`params.yaml`](./params.yaml) for
-  the fully annotated list of every option.
+  respects command dependencies (e.g. `mds` needs `end_motifs`, `regional_mds` needs
+  `interval_end_motifs`). The per-region motif-diversity step is `regional_mds`. See
+  [`params.yaml`](./params.yaml) for the fully annotated list of every option.
 
 ### Output file naming
 
@@ -134,7 +137,7 @@ Blacklist, BEDbase) by `setup_reference.sh`.
 ### Citation
 Li JW, Bandaru R, Baliga K, Liu Y (2025). *FinaleToolkit: accelerating cell-free DNA fragmentation
 analysis with a high-speed computational toolkit.* **Bioinformatics Advances**.
-![DOI](https://img.shields.io/badge/DOI-10.1093%2Fbioadv%2Fvbaf236-DDC7A6?style=flat-square)
+[![DOI](https://img.shields.io/badge/DOI-10.1093%2Fbioadv%2Fvbaf236-836eaa?style=flat-square)](https://doi.org/10.1093/bioadv/vbaf236)
 
 ### Contact
 - Ravi Bandaru: ravi.bandaru@northwestern.edu
