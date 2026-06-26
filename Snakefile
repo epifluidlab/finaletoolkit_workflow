@@ -50,7 +50,7 @@ coverage_dir                   = os.path.join(out_dir, "coverage")
 end_motifs_dir                 = os.path.join(out_dir, "end_motifs")
 interval_end_motifs_dir        = os.path.join(out_dir, "interval_end_motifs")
 mds_dir                        = os.path.join(out_dir, "mds")
-interval_mds_dir               = os.path.join(out_dir, "interval_mds")
+regional_mds_dir               = os.path.join(out_dir, "regional_mds")
 wps_dir                        = os.path.join(out_dir, "wps")
 adjust_wps_dir                 = os.path.join(out_dir, "adjust_wps")
 delfi_dir                      = os.path.join(out_dir, "delfi")
@@ -66,7 +66,7 @@ coverage = config.get("coverage", False)
 end_motifs = config.get("end_motifs", False)
 interval_end_motifs = config.get("interval_end_motifs", False)
 mds = config.get("mds", False)
-interval_mds = config.get("interval_mds", False)
+regional_mds = config.get("regional_mds", False)
 wps = config.get("wps", False)
 adjust_wps = config.get("adjust_wps", False)
 delfi = config.get("delfi", False)
@@ -81,8 +81,8 @@ if (adjust_wps and not wps):
 if (mds and not end_motifs):
     raise SystemExit("end-motifs is required to run mds.")
 
-if (interval_mds and not interval_end_motifs):
-    raise SystemExit("interval-end-motifs is required to run interval-mds.")
+if (regional_mds and not interval_end_motifs):
+    raise SystemExit("interval-end-motifs is required to run regional-mds.")
 
 if (file_format != "bam" and file_format != "cram" and file_format != "bed.gz" and file_format != "frag.gz"):
     raise SystemExit('File format must be of type "bed.gz," "bam," or "cram."')
@@ -94,7 +94,7 @@ elif file_format == "cram":
 elif file_format == "bed.gz" or file_format == "frag.gz":
     index = "tbi"
 
-using_finaletoolkit = frag_length_bins or frag_length_intervals or coverage or end_motifs or interval_end_motifs or mds or interval_mds or wps or adjust_wps or delfi or cleavage_profile or agg_bw or breakpoint_motifs or interval_breakpoint_motifs
+using_finaletoolkit = frag_length_bins or frag_length_intervals or coverage or end_motifs or interval_end_motifs or mds or regional_mds or wps or adjust_wps or delfi or cleavage_profile or agg_bw or breakpoint_motifs or interval_breakpoint_motifs
 
 # Set the expand function for the files.
 def io(endings, samples, condition, dir=out_dir):
@@ -128,7 +128,7 @@ rule all:
             io(["end_motifs.tsv"], value, end_motifs, end_motifs_dir) +
             io(["interval_end_motifs.tsv"], value, interval_end_motifs, interval_end_motifs_dir) +
             io(["mds.txt"], value, mds, mds_dir) +
-            io(["interval_mds.tsv"], value, interval_mds, interval_mds_dir) +
+            io(["regional_mds.tsv"], value, regional_mds, regional_mds_dir) +
             io(["wps.bw"], value, wps, wps_dir) +
             io(["adjust_wps.bw"], value, adjust_wps, adjust_wps_dir) +
             io(["delfi.bed"], value, delfi, delfi_dir) +
@@ -159,10 +159,10 @@ rule filter_file:
     run:
         if filter_file:
             command = f"""finaletoolkit filter-file \
-                {f" -W {params.filter_file_whitelist}" if params.filter_file_whitelist else ""} \
-                {f" -B {params.filter_file_blacklist}" if params.filter_file_blacklist else ""} \
-                -o {output.main} -q {params.filter_file_mapq} -min {params.filter_file_min_length} -max {params.filter_file_max_length} \
-                -p {params.filter_file_intersect_policy} -w {params.filter_file_workers} {input.main}"""
+                {f" -w {params.filter_file_whitelist}" if params.filter_file_whitelist else ""} \
+                {f" -b {params.filter_file_blacklist}" if params.filter_file_blacklist else ""} \
+                -o {output.main} -q {params.filter_file_mapq} --min-length {params.filter_file_min_length} --max-length {params.filter_file_max_length} \
+                -p {params.filter_file_intersect_policy} -t {params.filter_file_workers} {input.main}"""
             shell(command)
         else:
             shell(f"cp {input.main} {output.main}")
@@ -189,6 +189,7 @@ rule frag_length_bins:
         png=os.path.join(frag_length_bins_dir, "{sample}.frag_length_bins.png")
     threads: 1
     params:
+        reference = config.get("frag_length_bins_reference"),
         mapq = config.get("frag_length_bins_mapq"),
         bin_size = config.get("frag_length_bins_bin_size"),
         policy = config.get("frag_length_bins_policy"),
@@ -201,6 +202,8 @@ rule frag_length_bins:
         short_fraction = config.get("frag_length_bins_short_fraction")
     run:
         command_parts = [f"finaletoolkit frag-length-bins {input}"]
+        if params.reference is not None:
+            command_parts.append(f"-r {os.path.join(sup_dir, params.reference)}")
         if params.mapq is not None:
             command_parts.append(f"-q {params.mapq}")
         if params.bin_size is not None:
@@ -208,9 +211,9 @@ rule frag_length_bins:
         if params.policy is not None:
             command_parts.append(f"-p {params.policy}")
         if params.min_len is not None:
-            command_parts.append(f"-min {params.min_len}")
+            command_parts.append(f"--min-length {params.min_len}")
         if params.max_len is not None:
-            command_parts.append(f"-max {params.max_len}")
+            command_parts.append(f"--max-length {params.max_len}")
         if params.chrom is not None and params.chrom != "":
             command_parts.append(f"-c {params.chrom}")
         if params.start is not None:
@@ -218,11 +221,11 @@ rule frag_length_bins:
         if params.end is not None:
             command_parts.append(f"-E {params.end}")
         if params.summary_stats:
-            command_parts.append("-stats")
+            command_parts.append("--summary-stats")
             if params.short_fraction is not None:
-                command_parts.append(f"-sf {params.short_fraction}")
+                command_parts.append(f"--short-threshold {params.short_fraction}")
         command_parts.append(f"-o {output.tsv}")
-        command_parts.append(f"--histogram-path {output.png} -v")
+        command_parts.append(f"--histogram {output.png} -v")
         command = " ".join(command_parts)
         print("Running: ", command)
         shell(f"{command}")
@@ -235,6 +238,7 @@ rule frag_length_intervals:
         os.path.join(frag_length_intervals_dir, "{sample}.frag_length_intervals.bed")
     threads: config.get("frag_length_intervals_workers")
     params:
+        reference = config.get("frag_length_intervals_reference"),
         min_len = config.get("frag_length_intervals_min_len"),
         max_len = config.get("frag_length_intervals_max_len"),
         policy = config.get("frag_length_intervals_policy"),
@@ -249,18 +253,20 @@ rule frag_length_intervals:
             input.intervals,
         ]
 
+        if params.reference is not None:
+            command_parts.append(f"-r {os.path.join(sup_dir, params.reference)}")
         if params.min_len is not None:
-            command_parts.append(f"-min {params.min_len}")
+            command_parts.append(f"--min-length {params.min_len}")
         if params.max_len is not None:
-            command_parts.append(f"-max {params.max_len}")
+            command_parts.append(f"--max-length {params.max_len}")
         if params.policy is not None:
             command_parts.append(f"-p {params.policy}")
         if params.mapq is not None:
             command_parts.append(f"-q {params.mapq}")
         if params.workers is not None:
-            command_parts.append(f"-w {params.workers}")
+            command_parts.append(f"-t {params.workers}")
         if params.short_reads is not None:
-            command_parts.append(f"-s {params.short_reads}")
+            command_parts.append(f"--short-threshold {params.short_reads}")
 
         command_parts.append(f"-o {output[0]} -v")  # Ensure output indexing
 
@@ -277,6 +283,7 @@ rule coverage:
         os.path.join(coverage_dir, "{sample}.coverage.bed")
     threads: config.get("coverage_workers")
     params:
+        reference = config.get("coverage_reference"),
         min_len = config.get("coverage_min_len"),
         max_len = config.get("coverage_max_len"),
         normalize = config.get("coverage_normalize", False),
@@ -292,15 +299,17 @@ rule coverage:
             input.intervals,
         ]
 
+        if params.reference is not None:
+            command_parts.append(f"-r {os.path.join(sup_dir, params.reference)}")
         if params.min_len is not None:
-            command_parts.append(f"-min {params.min_len}")
+            command_parts.append(f"--min-length {params.min_len}")
         if params.max_len is not None:
-            command_parts.append(f"-max {params.max_len}")
+            command_parts.append(f"--max-length {params.max_len}")
 
         if params.normalize:
             command_parts.append("-n")
             if params.scale_factor is not None:
-                command_parts.append(f"-s {params.scale_factor}")
+                command_parts.append(f"--scale-factor {params.scale_factor}")
 
         if params.intersect_policy is not None:
             command_parts.append(f"-p {params.intersect_policy}")
@@ -309,7 +318,7 @@ rule coverage:
             command_parts.append(f"-q {params.mapq}")
 
         if params.workers is not None:
-            command_parts.append(f"-w {params.workers}")
+            command_parts.append(f"-t {params.workers}")
 
         command_parts.append(f"-o {output} -v")
 
@@ -328,8 +337,7 @@ rule end_motifs:
         kmer_length = config.get("end_motifs_kmer_length"),
         min_len = config.get("end_motifs_min_len"),
         max_len = config.get("end_motifs_max_len"),
-        single_strand = config.get("end_motifs_single_strand", False),
-        negative_strand = config.get("end_motifs_negative_strand", False),
+        strand = config.get("end_motifs_strand"),
         mapq = config.get("end_motifs_mapq"),
         workers = config.get("end_motifs_workers")
     run:
@@ -343,19 +351,17 @@ rule end_motifs:
         if params.kmer_length is not None:
             command_parts.append(f"-k {params.kmer_length}")
         if params.min_len is not None:
-            command_parts.append(f"-min {params.min_len}")
+            command_parts.append(f"--min-length {params.min_len}")
         if params.max_len is not None:
-            command_parts.append(f"-max {params.max_len}")
+            command_parts.append(f"--max-length {params.max_len}")
 
-        if params.single_strand:
-            command_parts.append("-B")
-            if params.negative_strand:
-                command_parts.append("-n")
+        if params.strand is not None:
+            command_parts.append(f"--strand {params.strand}")
 
         if params.mapq is not None:
             command_parts.append(f"-q {params.mapq}")
         if params.workers is not None:
-            command_parts.append(f"-w {params.workers}")
+            command_parts.append(f"-t {params.workers}")
         command_parts.append(f"-o {output} -v")
 
         command = " ".join(command_parts)
@@ -374,8 +380,7 @@ rule interval_end_motifs:
         kmer_length = config.get("interval_end_motifs_kmer_length"),
         min_len = config.get("interval_end_motifs_min_len"),
         max_len = config.get("interval_end_motifs_max_len"),
-        single_strand = config.get("interval_end_motifs_single_strand", False),
-        negative_strand = config.get("interval_end_motifs_negative_strand", False),
+        strand = config.get("interval_end_motifs_strand"),
         mapq = config.get("interval_end_motifs_mapq"),
         workers = config.get("interval_end_motifs_workers")
     run:
@@ -390,19 +395,17 @@ rule interval_end_motifs:
         if params.kmer_length is not None:
             command_parts.append(f"-k {params.kmer_length}")
         if params.min_len is not None:
-            command_parts.append(f"-min {params.min_len}")
+            command_parts.append(f"--min-length {params.min_len}")
         if params.max_len is not None:
-            command_parts.append(f"-max {params.max_len}")
+            command_parts.append(f"--max-length {params.max_len}")
 
-        if params.single_strand:
-            command_parts.append("-B")
-            if params.negative_strand:
-                command_parts.append("-n")
+        if params.strand is not None:
+            command_parts.append(f"--strand {params.strand}")
 
         if params.mapq is not None:
             command_parts.append(f"-q {params.mapq}")
         if params.workers is not None:
-            command_parts.append(f"-w {params.workers}")
+            command_parts.append(f"-t {params.workers}")
         command_parts.append(f"-o {output[0]} -v")
 
         command = " ".join(command_parts)
@@ -435,18 +438,18 @@ rule mds:
         print("Running: ", command)
         shell(f"{command}")
 
-rule interval_mds:
+rule regional_mds:
     input:
         os.path.join(interval_end_motifs_dir, "{sample}.interval_end_motifs.tsv")
     output:
-        os.path.join(interval_mds_dir, "{sample}.interval_mds.tsv")
+        os.path.join(regional_mds_dir, "{sample}.regional_mds.tsv")
     params:
-        sep = config.get("interval_mds_sep", " "),
-        header = config.get("interval_mds_header")
+        sep = config.get("regional_mds_sep", " "),
+        header = config.get("regional_mds_header")
     run:
         command_parts = [
             "finaletoolkit",
-            "interval-mds"
+            "regional-mds"
         ]
         if params.sep is not None and not params.sep.isspace():
             command_parts.append(f"-s {params.sep}")
@@ -469,6 +472,7 @@ rule wps:
         os.path.join(wps_dir, "{sample}.wps.bw")
     threads: config.get("wps_workers")
     params:
+        reference = config.get("wps_reference"),
         chrom_sizes = config.get("wps_chrom_sizes"),
         interval_size = config.get("wps_interval_size"),
         window_size = config.get("wps_window_size"),
@@ -482,20 +486,22 @@ rule wps:
         time_min = config.get("wps_time_min", 1440)
     run:
         command_parts = ["finaletoolkit", "wps", input.data, input.site_bed]
+        if params.reference is not None:
+            command_parts.append(f"-r {os.path.join(sup_dir, params.reference)}")
         if params.chrom_sizes is not None:
-            command_parts.append(f"-c {os.path.join(sup_dir, params.chrom_sizes)}")
+            command_parts.append(f"--chrom-sizes {os.path.join(sup_dir, params.chrom_sizes)}")
         if params.interval_size is not None:
             command_parts.append(f"-i {params.interval_size}")
         if params.window_size is not None:
             command_parts.append(f"-W {params.window_size}")
         if params.min_len is not None:
-            command_parts.append(f"-min {params.min_len}")
+            command_parts.append(f"--min-length {params.min_len}")
         if params.max_len is not None:
-            command_parts.append(f"-max {params.max_len}")
+            command_parts.append(f"--max-length {params.max_len}")
         if params.mapq is not None:
             command_parts.append(f"-q {params.mapq}")
         if params.workers is not None:
-            command_parts.append(f"-w {params.workers}")
+            command_parts.append(f"-t {params.workers}")
         command_parts.append(f"-o {output[0]} -v")
         command = " ".join(command_parts)
         print("Running: ", command)
@@ -514,7 +520,7 @@ rule adjust_wps:
         median_window_size = config.get("adjust_wps_median_window_size"),
         savgol_window_size = config.get("adjust_wps_savgol_window_size"),
         savgol_poly_deg = config.get("adjust_wps_savgol_poly_deg"),
-        exclude_savgol = config.get("adjust_wps_exclude_savgol", False),
+        savgol = config.get("adjust_wps_savgol", True),
         workers = config.get("adjust_wps_workers"),
         mean = config.get("adjust_wps_mean", False),
         subtract_edges = config.get("adjust_wps_subtract_edges", False),
@@ -533,13 +539,13 @@ rule adjust_wps:
         if params.median_window_size is not None:
             command_parts.append(f"-m {params.median_window_size}")
         if params.savgol_window_size is not None:
-            command_parts.append(f"-s {params.savgol_window_size}")
+            command_parts.append(f"--savgol-window-size {params.savgol_window_size}")
         if params.savgol_poly_deg is not None:
-            command_parts.append(f"-p {params.savgol_poly_deg}")
-        if params.exclude_savgol:
-            command_parts.append("-S")
+            command_parts.append(f"--savgol-poly-deg {params.savgol_poly_deg}")
+        if not params.savgol:
+            command_parts.append("--no-savgol")
         if params.workers is not None:
-            command_parts.append(f"-w {params.workers}")
+            command_parts.append(f"-t {params.workers}")
         if params.mean:
             command_parts.append("--mean")
         if params.subtract_edges:
@@ -565,9 +571,9 @@ rule delfi:
         gap_file = config.get("delfi_gap_file"),
         gap_reference_genome = config.get("delfi_gap_reference_genome"),
         no_gc_correct = config.get("delfi_no_gc_correct", False),
-        keep_nocov = config.get("delfi_keep_nocov", False),
-        no_merge_bins = config.get("delfi_no_merge_bins", False),
-        window_size = config.get("delfi_window_size"),
+        remove_nocov = config.get("delfi_remove_nocov", True),
+        merge_bins = config.get("delfi_merge_bins", True),
+        merge_size = config.get("delfi_merge_size"),
         mapq = config.get("delfi_mapq"),
         workers = config.get("delfi_workers")
     run:
@@ -595,17 +601,17 @@ rule delfi:
         # file IS used, every contig in delfi_chrom_sizes must have a centromere entry.
 
         if params.no_gc_correct:
-            command_parts.append("-G")
-        if params.keep_nocov:
-            command_parts.append("-R")
-        if params.no_merge_bins:
-            command_parts.append("-M")
-        if params.window_size is not None:
-            command_parts.append(f"-s {params.window_size}")
+            command_parts.append("--no-gc-correct")
+        if not params.remove_nocov:
+            command_parts.append("--no-remove-nocov")
+        if not params.merge_bins:
+            command_parts.append("--no-merge-bins")
+        if params.merge_size is not None:
+            command_parts.append(f"--merge-size {params.merge_size}")
         if params.mapq is not None:
             command_parts.append(f"-q {params.mapq}")
         if params.workers is not None:
-            command_parts.append(f"-w {params.workers}")
+            command_parts.append(f"-t {params.workers}")
 
         command_parts.append(f"-o {output[0]} -v")
 
@@ -622,6 +628,7 @@ rule cleavage_profile:
         os.path.join(cleavage_profile_dir, "{sample}.cleavage_profile.bw")
     threads: config.get("cleavage_profile_workers")
     params:
+        reference = config.get("cleavage_profile_reference"),
         min_len = config.get("cleavage_profile_min_len"),
         max_len = config.get("cleavage_profile_max_len"),
         mapq = config.get("cleavage_profile_mapq"),
@@ -637,18 +644,20 @@ rule cleavage_profile:
             input.chrom_sizes,
         ]
 
+        if params.reference is not None:
+            command_parts.append(f"-r {os.path.join(sup_dir, params.reference)}")
         if params.min_len is not None:
-            command_parts.append(f"-min {params.min_len}")
+            command_parts.append(f"--min-length {params.min_len}")
         if params.max_len is not None:
-            command_parts.append(f"-max {params.max_len}")
+            command_parts.append(f"--max-length {params.max_len}")
         if params.mapq is not None:
             command_parts.append(f"-q {params.mapq}")
         if params.left is not None:
-            command_parts.append(f"-l {params.left}")
+            command_parts.append(f"--pad-left {params.left}")
         if params.right is not None:
-            command_parts.append(f"-r {params.right}")
+            command_parts.append(f"--pad-right {params.right}")
         if params.workers is not None:
-            command_parts.append(f"-w {params.workers}")
+            command_parts.append(f"-t {params.workers}")
 
         command_parts.append(f"-o {output[0]} -v")
         command = " ".join(command_parts)
@@ -676,7 +685,7 @@ rule agg_bw:
         if params.median_window_size is not None:
             command_parts.append(f"-m {params.median_window_size}")
         if params.mean:
-            command_parts.append("-a")
+            command_parts.append("--mean")
 
         command_parts.append(f"-o {output[0]}")
         command_parts.append("-v")
@@ -696,8 +705,7 @@ rule breakpoint_motifs:
         kmer_length = config.get("breakpoint_motifs_kmer_length"),
         min_len = config.get("breakpoint_motifs_min_len"),
         max_len = config.get("breakpoint_motifs_max_len"),
-        single_strand = config.get("breakpoint_motifs_single_strand", False),
-        negative_strand = config.get("breakpoint_motifs_negative_strand", False),
+        strand = config.get("breakpoint_motifs_strand"),
         mapq = config.get("breakpoint_motifs_mapq"),
         workers = config.get("breakpoint_motifs_workers")
     run:
@@ -711,19 +719,17 @@ rule breakpoint_motifs:
         if params.kmer_length is not None:
             command_parts.append(f"-k {params.kmer_length}")
         if params.min_len is not None:
-            command_parts.append(f"-min {params.min_len}")
+            command_parts.append(f"--min-length {params.min_len}")
         if params.max_len is not None:
-            command_parts.append(f"-max {params.max_len}")
+            command_parts.append(f"--max-length {params.max_len}")
 
-        if params.single_strand:
-            command_parts.append("-B")
-            if params.negative_strand:
-                command_parts.append("-n")
+        if params.strand is not None:
+            command_parts.append(f"--strand {params.strand}")
 
         if params.mapq is not None:
             command_parts.append(f"-q {params.mapq}")
         if params.workers is not None:
-            command_parts.append(f"-w {params.workers}")
+            command_parts.append(f"-t {params.workers}")
         command_parts.append(f"-o {output} -v")
 
         command = " ".join(command_parts)
@@ -742,8 +748,7 @@ rule interval_breakpoint_motifs:
         kmer_length = config.get("interval_breakpoint_motifs_kmer_length"),
         min_len = config.get("interval_breakpoint_motifs_min_len"),
         max_len = config.get("interval_breakpoint_motifs_max_len"),
-        single_strand = config.get("interval_breakpoint_motifs_single_strand", False),
-        negative_strand = config.get("interval_breakpoint_motifs_negative_strand", False),
+        strand = config.get("interval_breakpoint_motifs_strand"),
         mapq = config.get("interval_breakpoint_motifs_mapq"),
         workers = config.get("interval_breakpoint_motifs_workers")
     run:
@@ -758,19 +763,17 @@ rule interval_breakpoint_motifs:
         if params.kmer_length is not None:
             command_parts.append(f"-k {params.kmer_length}")
         if params.min_len is not None:
-            command_parts.append(f"-min {params.min_len}")
+            command_parts.append(f"--min-length {params.min_len}")
         if params.max_len is not None:
-            command_parts.append(f"-max {params.max_len}")
+            command_parts.append(f"--max-length {params.max_len}")
 
-        if params.single_strand:
-            command_parts.append("-B")
-            if params.negative_strand:
-                command_parts.append("-n")
+        if params.strand is not None:
+            command_parts.append(f"--strand {params.strand}")
 
         if params.mapq is not None:
             command_parts.append(f"-q {params.mapq}")
         if params.workers is not None:
-            command_parts.append(f"-w {params.workers}")
+            command_parts.append(f"-t {params.workers}")
         command_parts.append(f"-o {output[0]} -v")
 
         command = " ".join(command_parts)

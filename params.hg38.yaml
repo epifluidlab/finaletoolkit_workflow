@@ -59,10 +59,10 @@ interval_end_motifs_refseq_file: "hg38.2bit"
 interval_end_motifs_kmer_length: 4
 interval_end_motifs_min_len: 50
 interval_end_motifs_max_len: 350
-interval_end_motifs_single_strand: False
+interval_end_motifs_strand: both
 interval_end_motifs_mapq: 30
 interval_end_motifs_workers: 4
-interval_mds: True
+regional_mds: True
 
 # --- DELFI (500 kb bins, GC-corrected) ---
 delfi: True
@@ -72,8 +72,8 @@ delfi_bins_file: "hg38.500kb.bins.filtered"
 delfi_gap_file: "hg38.gap.bed"                # BED4 centromere/telomere annotations (finaletoolkit gap-bed)
 delfi_blacklist_file: "hg38.blacklist.bed"
 delfi_no_gc_correct: False
-delfi_keep_nocov: True
-delfi_no_merge_bins: True
-delfi_window_size: 5000000
+delfi_remove_nocov: False
+delfi_merge_bins: False
+delfi_merge_size: 5000000
 delfi_mapq: 30
 delfi_workers: 4

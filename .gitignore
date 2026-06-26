@@ -4,3 +4,4 @@ output/
 supplement/
 tmp/
 snakemake.log
+.DS_Store

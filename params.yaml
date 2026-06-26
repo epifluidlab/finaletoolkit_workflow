@@ -1,128 +1,169 @@
-# Below is a sample configuration for extracting coverage features
+# Annotated example configuration. Every option below maps 1:1 to a FinaleToolkit
+# CLI option of the same command. Enable a command with `<command>: True`, then set
+# any of its options with `<command>_<option>`. Uncomment what you need.
+#
+# Files named below (references, blacklists, chrom.sizes, bins, refseq, sites) are
+# looked up in `supplement_dir`. `-r/--reference` is a FASTA, only needed for CRAM
+# input.
 
 # input_dir: "input_data"
 # output_dir: "output_data"
-# supplement_dir: "supplement" 
+# supplement_dir: "supplement"
 # interval_file: "intervals.bins"
-# file_format: "bed.gz"
+# file_format: "bed.gz"          # bed.gz | frag.gz | bam | cram
+# workers: 1                     # global default worker count
 
-# Finaletoolkit filter-file parameters
-
-# filter_file: True
-# filter_file_mapq: 30
-# filter_file_min_length: 50
-# filter_file_max_length: 350
-# filter_file_blacklist_file: "blacklist.bed"
-# filter_file_whitelist_file: "whitelist.bed"
-# filter_file_intersect_policy: "midpoint"
-# filter_file_workers: 1
-
-# Mappability parameters
-
+# --- Mappability (interval filtering) ---------------------------------------
 # mappability_file: "mappability.bw"
 # mappability_threshold: 0.00
 
-# Frag-length-bins parameters
+# --- filter-file ------------------------------------------------------------
+# filter_file: True
+# filter_file_whitelist: "whitelist.bed"   # -w/--whitelist
+# filter_file_blacklist: "blacklist.bed"   # -b/--blacklist
+# filter_file_mapq: 30                      # -q/--min-mapq
+# filter_file_min_length: 50                # --min-length
+# filter_file_max_length: 350               # --max-length
+# filter_file_intersect_policy: "midpoint"  # -p/--intersect-policy  (midpoint|any)
+
+# --- frag-length-bins -------------------------------------------------------
 # frag_length_bins: True
-# frag_length_bins_bin_size: 10
-# frag_length_bins_mapq: 30
-# frag_length_bins_policy: "midpoint"
-# frag_length_bins_min_len: 50
-# frag_length_bins_max_len: 350
-# frag_length_bins_chrom: "22"
-# frag_length_bins_start: 0
-# frag_length_bins_end: 41000000
+# frag_length_bins_reference: "ref.fa"      # -r/--reference  (CRAM only)
+# frag_length_bins_mapq: 30                 # -q/--min-mapq
+# frag_length_bins_bin_size: 10             # --bin-size
+# frag_length_bins_policy: "midpoint"       # -p/--intersect-policy
+# frag_length_bins_min_len: 50              # --min-length
+# frag_length_bins_max_len: 350             # --max-length
+# frag_length_bins_chrom: "22"              # -c/--contig
+# frag_length_bins_start: 0                 # -S/--start
+# frag_length_bins_end: 41000000            # -E/--stop
+# frag_length_bins_summary_stats: True      # --summary-stats
+# frag_length_bins_short_fraction: 150      # --short-threshold
 
-# Frag-length-intervals parameters
+# --- frag-length-intervals --------------------------------------------------
 # frag_length_intervals: True
-# frag_length_intervals_mapq: 30
-# frag_length_intervals_policy: "midpoint"
-# frag_length_intervals_min_len: 50
-# frag_length_intervals_max_len: 350
-# frag_length_intervals_workers: 1
+# frag_length_intervals_reference: "ref.fa" # -r/--reference  (CRAM only)
+# frag_length_intervals_mapq: 30            # -q/--min-mapq
+# frag_length_intervals_policy: "midpoint"  # -p/--intersect-policy
+# frag_length_intervals_min_len: 50         # --min-length
+# frag_length_intervals_max_len: 350        # --max-length
+# frag_length_intervals_short_reads: 150    # --short-threshold
+# frag_length_intervals_workers: 1          # -t/--threads
 
+# --- coverage ---------------------------------------------------------------
 # coverage: True
-# coverage_mapq: 30
-# coverage_intersect_policy: "any"
-# coverage_min_len: 50
-# coverage_max_len: 350
-# coverage_workers: 1
-# coverage_normalize: True
-# coverage_scale_factor: 1000000
+# coverage_reference: "ref.fa"              # -r/--reference  (CRAM only)
+# coverage_mapq: 30                         # -q/--min-mapq
+# coverage_intersect_policy: "any"          # -p/--intersect-policy
+# coverage_min_len: 50                      # --min-length
+# coverage_max_len: 350                     # --max-length
+# coverage_normalize: True                  # -n/--normalize
+# coverage_scale_factor: 1000000            # --scale-factor
+# coverage_workers: 1                       # -t/--threads
 
+# --- end-motifs -------------------------------------------------------------
 # end_motifs: True
-# end_motifs_kmer_length: 5
-# end_motifs_min_len: 50
-# end_motifs_max_len: 350
-# end_motifs_no_both_strands: True
-# end_motifs_negative_strand: False
-# end_motifs_mapq: 30
-# end_motifs_workers: 1
+# end_motifs_refseq_file: "ref.2bit"        # REFERENCE positional (.2bit or FASTA)
+# end_motifs_kmer_length: 4                 # -k/--kmer-length
+# end_motifs_min_len: 50                    # --min-length
+# end_motifs_max_len: 350                   # --max-length
+# end_motifs_strand: "both"                 # --strand  (both|forward|reverse)
+# end_motifs_mapq: 30                       # -q/--min-mapq
+# end_motifs_workers: 1                     # -t/--threads
 
+# --- interval-end-motifs ----------------------------------------------------
 # interval_end_motifs: True
 # interval_end_motifs_refseq_file: "ref.2bit"
-# interval_end_motifs_kmer_length: 4
-# interval_end_motifs_min_len: 50
-# interval_end_motifs_max_len: 350
-# interval_end_motifs_single_strand: False
-# interval_end_motifs_negative_strand: False
-# interval_end_motifs_mapq: 30
-# interval_end_motifs_workers: 1
+# interval_end_motifs_kmer_length: 4        # -k/--kmer-length
+# interval_end_motifs_min_len: 50           # --min-length
+# interval_end_motifs_max_len: 350          # --max-length
+# interval_end_motifs_strand: "both"        # --strand  (both|forward|reverse)
+# interval_end_motifs_mapq: 30              # -q/--min-mapq
+# interval_end_motifs_workers: 1            # -t/--threads
 
+# --- breakpoint-motifs ------------------------------------------------------
+# breakpoint_motifs: True
+# breakpoint_motifs_refseq_file: "ref.2bit"
+# breakpoint_motifs_kmer_length: 6          # -k/--kmer-length
+# breakpoint_motifs_min_len: 50             # --min-length
+# breakpoint_motifs_max_len: 350            # --max-length
+# breakpoint_motifs_strand: "both"          # --strand  (both|forward|reverse)
+# breakpoint_motifs_mapq: 30                # -q/--min-mapq
+# breakpoint_motifs_workers: 1              # -t/--threads
+
+# --- interval-breakpoint-motifs ---------------------------------------------
+# interval_breakpoint_motifs: True
+# interval_breakpoint_motifs_refseq_file: "ref.2bit"
+# interval_breakpoint_motifs_kmer_length: 6
+# interval_breakpoint_motifs_min_len: 50
+# interval_breakpoint_motifs_max_len: 350
+# interval_breakpoint_motifs_strand: "both" # --strand  (both|forward|reverse)
+# interval_breakpoint_motifs_mapq: 30
+# interval_breakpoint_motifs_workers: 1
+
+# --- mds (needs end_motifs) -------------------------------------------------
 # mds: True
-# mds_sep: " "
-# mds_header: 0
+# mds_sep: " "                              # -s/--sep
+# mds_header: 0                             # --header
 
-# interval_mds: True
-# interval_mds_sep: " "
-# interval_mds_header: 0
+# --- regional-mds (needs interval_end_motifs) -------------------------------
+# regional_mds: True
+# regional_mds_sep: " "                     # -s/--sep
+# regional_mds_header: 0                    # --header
 
+# --- wps --------------------------------------------------------------------
 # wps: True
-# wps_chrom_sizes: "ref.chrom.sizes"
-# wps_site_bed: "sites.bed"
-# wps_interval_size: 5000
-# wps_window_size: 120
-# wps_min_len: 120
-# wps_max_len: 180
-# wps_mapq: 30
-# wps_workers: 4
+# wps_site_bed: "sites.bed"                 # REGIONS positional
+# wps_reference: "ref.fa"                   # -r/--reference  (CRAM only)
+# wps_chrom_sizes: "ref.chrom.sizes"        # --chrom-sizes
+# wps_interval_size: 5000                   # -i/--interval-size
+# wps_window_size: 120                      # -W/--window-size
+# wps_min_len: 120                          # --min-length
+# wps_max_len: 180                          # --max-length
+# wps_mapq: 30                              # -q/--min-mapq
+# wps_workers: 4                            # -t/--threads
 
+# --- adjust-wps (needs wps) -------------------------------------------------
 # adjust_wps: True
-# adjust_wps_interval_file: "sites.bed"
-# adjust_wps_chrom_sizes: "ref.chrom.sizes"
-# adjust_wps_interval_size: 5000
-# adjust_wps_median_window_size: 200
-# adjust_wps_savgol_window_size: 21
-# adjust_wps_savgol_poly_deg: 2
-# adjust_wps_exclude_savgol: True
-# adjust_wps_workers: 4
-# adjust_wps_mean: False
-# adjust_wps_subtract_edges: True
-# adjust_wps_edge_size: 500 # Breaks functionality for some reason
+# adjust_wps_chrom_sizes: "ref.chrom.sizes" # CHROM_SIZES positional
+# adjust_wps_interval_size: 5000            # -i/--interval-size
+# adjust_wps_median_window_size: 200        # -m/--median-window-size
+# adjust_wps_savgol_window_size: 21         # --savgol-window-size
+# adjust_wps_savgol_poly_deg: 2             # --savgol-poly-deg
+# adjust_wps_savgol: True                   # --savgol/--no-savgol  (set False to disable)
+# adjust_wps_mean: False                    # --mean
+# adjust_wps_subtract_edges: True           # --subtract-edges
+# adjust_wps_edge_size: 500                 # --edge-size
+# adjust_wps_workers: 4                     # -t/--threads
 
+# --- delfi ------------------------------------------------------------------
 # delfi: True
-# Only one of the two parameters below need to be given
-# delfi_gap_file: "ref.gap.bed"
-# delfi_gap_reference_genome: "ref"
-# delfi_chrom_sizes: "ref.chrom.sizes"
-# delfi_reference_file: "ref.2bit"
-# delfi_bins_file: "interval.bins"
-# delfi_no_gc_correct: False
-# delfi_keep_nocov: False
-# delfi_no_merge_bins: True
-# delfi_window_size: 5000000
-# delfi_mapq: 30
-# delfi_workers: 4
+# delfi_chrom_sizes: "ref.chrom.sizes"      # CHROM_SIZES positional
+# delfi_reference_file: "ref.2bit"          # REFERENCE positional (.2bit or FASTA)
+# delfi_bins_file: "interval.bins"          # BINS positional
+# delfi_blacklist_file: "blacklist.bed"     # -b/--blacklist
+# Give at most one of the two gap options:
+# delfi_gap_file: "ref.gap.bed"             # -g/--gap-file (a BED4 file)
+# delfi_gap_reference_genome: "hg38"        # -g/--gap-file (a genome name; gap-bed is generated)
+# delfi_no_gc_correct: False                # --no-gc-correct
+# delfi_remove_nocov: True                  # --remove-nocov/--no-remove-nocov (set False to keep them)
+# delfi_merge_bins: True                    # --merge-bins/--no-merge-bins (set False to keep input bins)
+# delfi_merge_size: 5000000                 # --merge-size
+# delfi_mapq: 30                            # -q/--min-mapq
+# delfi_workers: 4                          # -t/--threads
 
+# --- cleavage-profile -------------------------------------------------------
 # cleavage_profile: True
-# cleavage_profile_chrom_sizes: "ref.chrom.sizes"
-# cleavage_profile_min_len: 50
-# cleavage_profile_max_len: 350
-# cleavage_profile_mapq: 30
-# cleavage_profile_left: 2000
-# cleavage_profile_right: 2000
-# cleavage_profile_workers: 8
+# cleavage_profile_chrom_sizes: "ref.chrom.sizes"  # CHROM_SIZES positional
+# cleavage_profile_reference: "ref.fa"      # -r/--reference  (CRAM only)
+# cleavage_profile_min_len: 50              # --min-length
+# cleavage_profile_max_len: 350             # --max-length
+# cleavage_profile_mapq: 30                 # -q/--min-mapq
+# cleavage_profile_left: 2000               # --pad-left
+# cleavage_profile_right: 2000              # --pad-right
+# cleavage_profile_workers: 8               # -t/--threads
 
+# --- agg-bw (needs cleavage_profile) ----------------------------------------
 # agg_bw: True
-# agg_bw_median_window_size: 1
-# agg_bw_mean: True
+# agg_bw_median_window_size: 1              # -m/--median-window-size
+# agg_bw_mean: True                         # --mean
