@@ -1,11 +1,11 @@
 
 # FinaleToolkit Workflow
 
-This Snakemake workflow automates the extraction of epigenomic features using Finaletoolkit, supporting parallel processing, SLURM, and common genomic file formats.
+This Snakemake workflow automates the extraction of epigenomic features using Finaletoolkit, supporting parallel processing, SLURM, and common genomic file formats. It targets **FinaleToolkit 1.0.0**, which introduced a redesigned CLI (see the [Migration to FinaleToolkit 1.0.0](#migration-to-finaletoolkit-100) section).
 
 ## Key Features
 
-*   **Finaletoolkit Support:** Implements most Finaletoolkit CLI commands (excluding `gap-bed` and `delfi-gc-correct`).
+*   **Finaletoolkit Support:** Implements most Finaletoolkit 1.0.0 CLI commands. (`delfi-gc-correct` was removed in 1.0.0 — GC correction now runs automatically inside `delfi`; `gap-bed` is not exposed directly but is used internally by the `delfi` step.)
 *   **File Compatibility:** Works with BED, BAM, and CRAM files.
 *   **Mappability Filtering:** Filters interval files based on mappability scores.
 *   **Parallelization:** Supports multi-core processing.
@@ -90,7 +90,7 @@ snakemake  --profile slurm_profile > snakemake.log 2>&1 &
     *   `finaletoolkit_command: True/False`: Enables a specific Finaletoolkit command, using hyphens replaced by
     underscores (e.g., `adjust-wps` becomes `adjust_wps: True`).
     *   `finaletoolkit_command_flag: value`: Sets flags for a Finaletoolkit command (e.g.,
-    `adjust_wps_max_length: 250`). Flags that take input files, output files, or `verbose` flags do not exist here.  `mapping_quality` is shortened to `mapq` for flags (e.g., `coverage_mapping_quality` becomes `coverage_mapq`).
+    `adjust_wps_max_length: 250`). Flags that take input files, output files, or `verbose` flags do not exist here.  `mapping_quality` is shortened to `mapq` for flags (e.g., `coverage_mapping_quality` becomes `coverage_mapq`). Config keys follow FinaleToolkit 1.0.0 terminology — worker counts use `_threads`, fragment bounds use `_min_length`/`_max_length`, motif strand selection uses a single `_strand` key (`both`/`forward`/`reverse`), and cleavage padding uses `_pad_left`/`_pad_right`.
 
 ## Output File Naming
 
@@ -107,12 +107,34 @@ snakemake  --profile slurm_profile > snakemake.log 2>&1 &
 
 *   Finaletoolkit commands are specified in `params.yaml` with underscores instead of hyphens.
 *   Set command flags by appending `_<flag_name>` to the converted command name.
-*   This workflow respects command dependencies.  For example, `adjust-wps` requires `wps` output, and `mds` needs `end-motifs`.
+*   This workflow respects command dependencies.  For example, `adjust-wps` requires `wps` output, `mds` needs `end-motifs`, and `regional_mds` (renamed from `interval-mds` in 1.0.0) needs `interval-end-motifs`.
 
 ## `filter-file` Command
 
 *   If only `filter-file` is set to `True`, the output of the workflow will be only the filtered files.
 *   If any other Finaletoolkit commands are set, they will use the output of `filter-file` as their input.
+
+## Migration to FinaleToolkit 1.0.0
+
+FinaleToolkit 1.0.0 redesigned its CLI, so several `params.yaml` config keys were renamed to match. If you are upgrading an existing `params.yaml`, update the following keys:
+
+| Old key | New key |
+| --- | --- |
+| `<command>_workers`, `workers` | `<command>_threads`, `threads` |
+| `<command>_min_len` / `<command>_max_len` | `<command>_min_length` / `<command>_max_length` |
+| `<motif>_single_strand` + `<motif>_negative_strand` | `<motif>_strand` (`both` / `forward` / `reverse`) |
+| `cleavage_profile_left` / `cleavage_profile_right` | `cleavage_profile_pad_left` / `cleavage_profile_pad_right` |
+| `frag_length_bins_short_fraction` | `frag_length_bins_short_threshold` |
+| `frag_length_intervals_short_reads` | `frag_length_intervals_short_threshold` |
+| `adjust_wps_exclude_savgol: True` | `adjust_wps_savgol: False` (meaning inverted; savgol is on by default) |
+| `delfi_window_size` | `delfi_merge_size` |
+| `delfi_keep_nocov: True` | `delfi_remove_nocov: False` (meaning inverted; removal is on by default) |
+| `delfi_no_merge_bins: True` | `delfi_merge_bins: False` (meaning inverted; merging is on by default) |
+| `interval_mds` (and `interval_mds_sep` / `interval_mds_header`) | `regional_mds` (and `regional_mds_sep` / `regional_mds_header`) |
+
+Motif strand selection: use `_strand: "forward"` for the old `single_strand: True` (positive strand only) and `_strand: "reverse"` for `single_strand: True` + `negative_strand: True`. The default `both` matches the old default.
+
+Output note: the `regional_mds` outputs land in `output/regional_mds/*.regional_mds.tsv` (previously `interval_mds`).
 
 ## Notes
 

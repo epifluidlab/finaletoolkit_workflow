@@ -1,10 +1,13 @@
 # Below is a sample configuration for extracting coverage features
+# Config keys follow FinaleToolkit 1.0.0 terminology (see the README migration note).
 
 # input_dir: "input_data"
 # output_dir: "output_data"
-# supplement_dir: "supplement" 
+# supplement_dir: "supplement"
 # interval_file: "intervals.bins"
 # file_format: "bed.gz"
+
+# threads: 1  # Global worker count used by the filter-file step
 
 # Finaletoolkit filter-file parameters
 
@@ -15,7 +18,6 @@
 # filter_file_blacklist_file: "blacklist.bed"
 # filter_file_whitelist_file: "whitelist.bed"
 # filter_file_intersect_policy: "midpoint"
-# filter_file_workers: 1
 
 # Mappability parameters
 
@@ -27,31 +29,31 @@
 # frag_length_bins_bin_size: 10
 # frag_length_bins_mapq: 30
 # frag_length_bins_policy: "midpoint"
-# frag_length_bins_min_len: 50
-# frag_length_bins_max_len: 350
+# frag_length_bins_min_length: 50
+# frag_length_bins_max_length: 350
 # frag_length_bins_chrom: "22"
 # frag_length_bins_start: 0
 # frag_length_bins_end: 41000000
 # frag_length_bins_summary_stats: True
-# frag_length_bins_short_fraction: 150
+# frag_length_bins_short_threshold: 150
 # frag_length_bins_reference_file: "ref.fa"  # Required for CRAM input
 
 # Frag-length-intervals parameters
 # frag_length_intervals: True
 # frag_length_intervals_mapq: 30
 # frag_length_intervals_policy: "midpoint"
-# frag_length_intervals_min_len: 50
-# frag_length_intervals_max_len: 350
-# frag_length_intervals_workers: 1
-# frag_length_intervals_short_reads: 150
+# frag_length_intervals_min_length: 50
+# frag_length_intervals_max_length: 350
+# frag_length_intervals_threads: 1
+# frag_length_intervals_short_threshold: 150
 # frag_length_intervals_reference_file: "ref.fa"  # Required for CRAM input
 
 # coverage: True
 # coverage_mapq: 30
 # coverage_intersect_policy: "any"
-# coverage_min_len: 50
-# coverage_max_len: 350
-# coverage_workers: 1
+# coverage_min_length: 50
+# coverage_max_length: 350
+# coverage_threads: 1
 # coverage_normalize: True
 # coverage_scale_factor: 1000000
 # coverage_reference_file: "ref.fa"  # Required for CRAM input
@@ -59,40 +61,38 @@
 # end_motifs: True
 # end_motifs_refseq_file: "ref.fa"  # A .2bit or FASTA (.fa, .fasta, .fna) file
 # end_motifs_kmer_length: 5
-# end_motifs_min_len: 50
-# end_motifs_max_len: 350
-# end_motifs_single_strand: True  # When True, only considers one strand (-B flag)
-# end_motifs_negative_strand: False  # When True (requires single_strand: True), uses negative strand
+# end_motifs_min_length: 50
+# end_motifs_max_length: 350
+# end_motifs_strand: "both"  # both | forward | reverse (default both). Replaces single_strand/negative_strand.
 # end_motifs_mapq: 30
-# end_motifs_workers: 1
+# end_motifs_threads: 1
 
 # interval_end_motifs: True
 # interval_end_motifs_refseq_file: "ref.2bit"
 # interval_end_motifs_kmer_length: 4
-# interval_end_motifs_min_len: 50
-# interval_end_motifs_max_len: 350
-# interval_end_motifs_single_strand: False
-# interval_end_motifs_negative_strand: False
+# interval_end_motifs_min_length: 50
+# interval_end_motifs_max_length: 350
+# interval_end_motifs_strand: "both"  # both | forward | reverse (default both)
 # interval_end_motifs_mapq: 30
-# interval_end_motifs_workers: 1
+# interval_end_motifs_threads: 1
 
 # mds: True
 # mds_sep: " "
 # mds_header: 0
 
-# interval_mds: True
-# interval_mds_sep: " "
-# interval_mds_header: 0
+# regional_mds: True  # Regional MDS (rMDS); renamed from interval-mds in 1.0.0
+# regional_mds_sep: " "
+# regional_mds_header: 0
 
 # wps: True
 # wps_chrom_sizes: "ref.chrom.sizes"
 # wps_site_bed: "sites.bed"
 # wps_interval_size: 5000
 # wps_window_size: 120
-# wps_min_len: 120
-# wps_max_len: 180
+# wps_min_length: 120
+# wps_max_length: 180
 # wps_mapq: 30
-# wps_workers: 4
+# wps_threads: 4
 # wps_reference_file: "ref.fa"  # Required for CRAM input
 
 # adjust_wps: True
@@ -102,8 +102,8 @@
 # adjust_wps_median_window_size: 200
 # adjust_wps_savgol_window_size: 21
 # adjust_wps_savgol_poly_deg: 2
-# adjust_wps_exclude_savgol: True
-# adjust_wps_workers: 4
+# adjust_wps_savgol: True  # Apply Savitzky-Golay filtering (on by default). Set False to disable (--no-savgol).
+# adjust_wps_threads: 4
 # adjust_wps_mean: False
 # adjust_wps_subtract_edges: True
 # adjust_wps_edge_size: 500 # Breaks functionality for some reason
@@ -116,20 +116,20 @@
 # delfi_reference_file: "ref.2bit"
 # delfi_bins_file: "interval.bins"
 # delfi_no_gc_correct: False
-# delfi_keep_nocov: False
-# delfi_no_merge_bins: True
-# delfi_window_size: 5000000
+# delfi_remove_nocov: True  # Remove the two hg19 no-coverage bins (on by default). Set False for non-hg19 references (--no-remove-nocov).
+# delfi_merge_bins: True    # Merge input bins to 5Mb (on by default). Set False to keep input bins (--no-merge-bins).
+# delfi_merge_size: 5000000
 # delfi_mapq: 30
-# delfi_workers: 4
+# delfi_threads: 4
 
 # cleavage_profile: True
 # cleavage_profile_chrom_sizes: "ref.chrom.sizes"
-# cleavage_profile_min_len: 50
-# cleavage_profile_max_len: 350
+# cleavage_profile_min_length: 50
+# cleavage_profile_max_length: 350
 # cleavage_profile_mapq: 30
-# cleavage_profile_left: 2000
-# cleavage_profile_right: 2000
-# cleavage_profile_workers: 8
+# cleavage_profile_pad_left: 2000
+# cleavage_profile_pad_right: 2000
+# cleavage_profile_threads: 8
 # cleavage_profile_reference_file: "ref.fa"  # Required for CRAM input
 
 # agg_bw: True
@@ -139,19 +139,17 @@
 # breakpoint_motifs: True
 # breakpoint_motifs_refseq_file: "ref.fa"  # A .2bit or FASTA (.fa, .fasta, .fna) file
 # breakpoint_motifs_kmer_length: 4
-# breakpoint_motifs_min_len: 50
-# breakpoint_motifs_max_len: 350
-# breakpoint_motifs_single_strand: False
-# breakpoint_motifs_negative_strand: False
+# breakpoint_motifs_min_length: 50
+# breakpoint_motifs_max_length: 350
+# breakpoint_motifs_strand: "both"  # both | forward | reverse (default both)
 # breakpoint_motifs_mapq: 30
-# breakpoint_motifs_workers: 1
+# breakpoint_motifs_threads: 1
 
 # interval_breakpoint_motifs: True
 # interval_breakpoint_motifs_refseq_file: "ref.fa"  # A .2bit or FASTA (.fa, .fasta, .fna) file
 # interval_breakpoint_motifs_kmer_length: 4
-# interval_breakpoint_motifs_min_len: 50
-# interval_breakpoint_motifs_max_len: 350
-# interval_breakpoint_motifs_single_strand: False
-# interval_breakpoint_motifs_negative_strand: False
+# interval_breakpoint_motifs_min_length: 50
+# interval_breakpoint_motifs_max_length: 350
+# interval_breakpoint_motifs_strand: "both"  # both | forward | reverse (default both)
 # interval_breakpoint_motifs_mapq: 30
-# interval_breakpoint_motifs_workers: 1
+# interval_breakpoint_motifs_threads: 1

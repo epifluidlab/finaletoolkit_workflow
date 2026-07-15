@@ -41,7 +41,7 @@ coverage_dir                   = os.path.join(out_dir, "coverage")
 end_motifs_dir                 = os.path.join(out_dir, "end_motifs")
 interval_end_motifs_dir        = os.path.join(out_dir, "interval_end_motifs")
 mds_dir                        = os.path.join(out_dir, "mds")
-interval_mds_dir               = os.path.join(out_dir, "interval_mds")
+regional_mds_dir               = os.path.join(out_dir, "regional_mds")
 wps_dir                        = os.path.join(out_dir, "wps")
 adjust_wps_dir                 = os.path.join(out_dir, "adjust_wps")
 delfi_dir                      = os.path.join(out_dir, "delfi")
@@ -57,7 +57,7 @@ coverage = config.get("coverage", False)
 end_motifs = config.get("end_motifs", False)
 interval_end_motifs = config.get("interval_end_motifs", False)
 mds = config.get("mds", False)
-interval_mds = config.get("interval_mds", False)
+regional_mds = config.get("regional_mds", False)
 wps = config.get("wps", False)
 adjust_wps = config.get("adjust_wps", False)
 delfi = config.get("delfi", False)
@@ -72,8 +72,8 @@ if (adjust_wps and not wps):
 if (mds and not end_motifs):
     raise SystemExit("end-motifs is required to run mds.")
 
-if (interval_mds and not interval_end_motifs):
-    raise SystemExit("interval-end-motifs is required to run interval-mds.")
+if (regional_mds and not interval_end_motifs):
+    raise SystemExit("interval-end-motifs is required to run regional-mds.")
 
 if (file_format != "bam" and file_format != "cram" and file_format != "bed.gz" and file_format != "frag.gz"):
     raise SystemExit('File format must be of type "bed.gz," "bam," or "cram."')
@@ -85,7 +85,7 @@ elif file_format == "cram":
 elif file_format == "bed.gz" or file_format == "frag.gz":
     index = "tbi"
 
-using_finaletoolkit = frag_length_bins or frag_length_intervals or coverage or end_motifs or interval_end_motifs or mds or interval_mds or wps or adjust_wps or delfi or cleavage_profile or agg_bw or breakpoint_motifs or interval_breakpoint_motifs
+using_finaletoolkit = frag_length_bins or frag_length_intervals or coverage or end_motifs or interval_end_motifs or mds or regional_mds or wps or adjust_wps or delfi or cleavage_profile or agg_bw or breakpoint_motifs or interval_breakpoint_motifs
 
 # Set the expand function for the files.
 def io(endings, samples, condition, dir=out_dir):
@@ -119,7 +119,7 @@ rule all:
             io(["end_motifs.tsv"], value, end_motifs, end_motifs_dir) +
             io(["interval_end_motifs.tsv"], value, interval_end_motifs, interval_end_motifs_dir) +
             io(["mds.txt"], value, mds, mds_dir) +
-            io(["interval_mds.tsv"], value, interval_mds, interval_mds_dir) +
+            io(["regional_mds.tsv"], value, regional_mds, regional_mds_dir) +
             io(["wps.bw"], value, wps, wps_dir) +
             io(["adjust_wps.bw"], value, adjust_wps, adjust_wps_dir) +
             io(["delfi.bed"], value, delfi, delfi_dir) +
@@ -143,17 +143,17 @@ rule filter_file:
         filter_file_mapq = config.get("filter_file_mapq", 0),
         filter_file_min_length = config.get("filter_file_min_length", 0),
         filter_file_max_length = config.get("filter_file_max_length", sys.maxsize),
-        filter_file_blacklist = os.path.join(sup_dir, config['filter_file_blacklist']) if 'filter_file_blacklist' in config else None,
-        filter_file_whitelist = os.path.join(sup_dir, config['filter_file_whitelist']) if 'filter_file_whitelist' in config else None,
+        filter_file_blacklist = os.path.join(sup_dir, config['filter_file_blacklist_file']) if 'filter_file_blacklist_file' in config else None,
+        filter_file_whitelist = os.path.join(sup_dir, config['filter_file_whitelist_file']) if 'filter_file_whitelist_file' in config else None,
         filter_file_intersect_policy = config.get("filter_file_intersect_policy", "midpoint"),
-        filter_file_workers = config.get("workers", 1)
+        filter_file_threads = config.get("threads", 1)
     run:
         if filter_file:
             command = f"""finaletoolkit filter-file \
-                {f" -W {params.filter_file_whitelist}" if params.filter_file_whitelist else ""} \
-                {f" -B {params.filter_file_blacklist}" if params.filter_file_blacklist else ""} \
-                -o {output.main} -q {params.filter_file_mapq} -min {params.filter_file_min_length} -max {params.filter_file_max_length} \
-                -p {params.filter_file_intersect_policy} -w {params.filter_file_workers} {input.main}"""
+                {f" -w {params.filter_file_whitelist}" if params.filter_file_whitelist else ""} \
+                {f" -b {params.filter_file_blacklist}" if params.filter_file_blacklist else ""} \
+                -o {output.main} -q {params.filter_file_mapq} --min-length {params.filter_file_min_length} --max-length {params.filter_file_max_length} \
+                -p {params.filter_file_intersect_policy} -t {params.filter_file_threads} {input.main}"""
             shell(command)
         else:
             shell(f"cp {input.main} {output.main}")
@@ -183,13 +183,13 @@ rule frag_length_bins:
         mapq = config.get("frag_length_bins_mapq"),
         bin_size = config.get("frag_length_bins_bin_size"),
         policy = config.get("frag_length_bins_policy"),
-        min_len = config.get("frag_length_bins_min_len"),
-        max_len = config.get("frag_length_bins_max_len"),
+        min_len = config.get("frag_length_bins_min_length"),
+        max_len = config.get("frag_length_bins_max_length"),
         chrom = config.get("frag_length_bins_chrom"),
         start = config.get("frag_length_bins_start"),
         end = config.get("frag_length_bins_end"),
         summary_stats = config.get("frag_length_bins_summary_stats", False),
-        short_fraction = config.get("frag_length_bins_short_fraction"),
+        short_threshold = config.get("frag_length_bins_short_threshold"),
         reference_file = config.get("frag_length_bins_reference_file")
     run:
         command_parts = [f"finaletoolkit frag-length-bins {input}"]
@@ -202,9 +202,9 @@ rule frag_length_bins:
         if params.policy is not None:
             command_parts.append(f"-p {params.policy}")
         if params.min_len is not None:
-            command_parts.append(f"-min {params.min_len}")
+            command_parts.append(f"--min-length {params.min_len}")
         if params.max_len is not None:
-            command_parts.append(f"-max {params.max_len}")
+            command_parts.append(f"--max-length {params.max_len}")
         if params.chrom is not None and params.chrom != "":
             command_parts.append(f"-c {params.chrom}")
         if params.start is not None:
@@ -212,11 +212,11 @@ rule frag_length_bins:
         if params.end is not None:
             command_parts.append(f"-E {params.end}")
         if params.summary_stats:
-            command_parts.append("-stats")
-            if params.short_fraction is not None:
-                command_parts.append(f"-sf {params.short_fraction}")
+            command_parts.append("--summary-stats")
+            if params.short_threshold is not None:
+                command_parts.append(f"--short-threshold {params.short_threshold}")
         command_parts.append(f"-o {output.tsv}")
-        command_parts.append(f"--histogram-path {output.png} -v")
+        command_parts.append(f"--histogram {output.png} -v")
         command = " ".join(command_parts)
         print("Running: ", command)
         shell(f"{command}")
@@ -227,14 +227,14 @@ rule frag_length_intervals:
         intervals = os.path.join(sup_dir, f"{config.get('interval_file')}" + ".filtered")
     output:
         os.path.join(frag_length_intervals_dir, "{sample}.frag_length_intervals.bed")
-    threads: config.get("frag_length_intervals_workers")
+    threads: config.get("frag_length_intervals_threads")
     params:
-        min_len = config.get("frag_length_intervals_min_len"),
-        max_len = config.get("frag_length_intervals_max_len"),
+        min_len = config.get("frag_length_intervals_min_length"),
+        max_len = config.get("frag_length_intervals_max_length"),
         policy = config.get("frag_length_intervals_policy"),
         mapq = config.get("frag_length_intervals_mapq"),
-        workers = config.get("frag_length_intervals_workers"),
-        short_reads = config.get("frag_length_intervals_short_reads"),
+        threads = config.get("frag_length_intervals_threads"),
+        short_threshold = config.get("frag_length_intervals_short_threshold"),
         reference_file = config.get("frag_length_intervals_reference_file")
     run:
         command_parts = [
@@ -247,17 +247,17 @@ rule frag_length_intervals:
         if params.reference_file is not None:
             command_parts.append(f"-r {os.path.join(sup_dir, params.reference_file)}")
         if params.min_len is not None:
-            command_parts.append(f"-min {params.min_len}")
+            command_parts.append(f"--min-length {params.min_len}")
         if params.max_len is not None:
-            command_parts.append(f"-max {params.max_len}")
+            command_parts.append(f"--max-length {params.max_len}")
         if params.policy is not None:
             command_parts.append(f"-p {params.policy}")
         if params.mapq is not None:
             command_parts.append(f"-q {params.mapq}")
-        if params.workers is not None:
-            command_parts.append(f"-w {params.workers}")
-        if params.short_reads is not None:
-            command_parts.append(f"-s {params.short_reads}")
+        if params.threads is not None:
+            command_parts.append(f"-t {params.threads}")
+        if params.short_threshold is not None:
+            command_parts.append(f"--short-threshold {params.short_threshold}")
 
         command_parts.append(f"-o {output[0]} -v")  # Ensure output indexing
 
@@ -272,15 +272,15 @@ rule coverage:
         intervals = os.path.join(sup_dir, f"{config.get('interval_file')}" + ".filtered")
     output:
         os.path.join(coverage_dir, "{sample}.coverage.bed")
-    threads: config.get("coverage_workers")
+    threads: config.get("coverage_threads")
     params:
-        min_len = config.get("coverage_min_len"),
-        max_len = config.get("coverage_max_len"),
+        min_len = config.get("coverage_min_length"),
+        max_len = config.get("coverage_max_length"),
         normalize = config.get("coverage_normalize", False),
         scale_factor = config.get("coverage_scale_factor"),
         intersect_policy = config.get("coverage_intersect_policy"),
         mapq = config.get("coverage_mapq"),
-        workers = config.get("coverage_workers"),
+        threads = config.get("coverage_threads"),
         reference_file = config.get("coverage_reference_file")
     run:
         command_parts = [
@@ -293,14 +293,14 @@ rule coverage:
         if params.reference_file is not None:
             command_parts.append(f"-r {os.path.join(sup_dir, params.reference_file)}")
         if params.min_len is not None:
-            command_parts.append(f"-min {params.min_len}")
+            command_parts.append(f"--min-length {params.min_len}")
         if params.max_len is not None:
-            command_parts.append(f"-max {params.max_len}")
+            command_parts.append(f"--max-length {params.max_len}")
 
         if params.normalize:
             command_parts.append("-n")
             if params.scale_factor is not None:
-                command_parts.append(f"-s {params.scale_factor}")
+                command_parts.append(f"--scale-factor {params.scale_factor}")
 
         if params.intersect_policy is not None:
             command_parts.append(f"-p {params.intersect_policy}")
@@ -308,8 +308,8 @@ rule coverage:
         if params.mapq is not None:
             command_parts.append(f"-q {params.mapq}")
 
-        if params.workers is not None:
-            command_parts.append(f"-w {params.workers}")
+        if params.threads is not None:
+            command_parts.append(f"-t {params.threads}")
 
         command_parts.append(f"-o {output} -v")
 
@@ -323,15 +323,14 @@ rule end_motifs:
         refseq = os.path.join(sup_dir, f"{config.get('end_motifs_refseq_file')}")
     output:
         os.path.join(end_motifs_dir, "{sample}.end_motifs.tsv")
-    threads: config.get("end_motifs_workers")
+    threads: config.get("end_motifs_threads")
     params:
         kmer_length = config.get("end_motifs_kmer_length"),
-        min_len = config.get("end_motifs_min_len"),
-        max_len = config.get("end_motifs_max_len"),
-        single_strand = config.get("end_motifs_single_strand", False),
-        negative_strand = config.get("end_motifs_negative_strand", False),
+        min_len = config.get("end_motifs_min_length"),
+        max_len = config.get("end_motifs_max_length"),
+        strand = config.get("end_motifs_strand"),
         mapq = config.get("end_motifs_mapq"),
-        workers = config.get("end_motifs_workers")
+        threads = config.get("end_motifs_threads")
     run:
         command_parts = [
             "finaletoolkit",
@@ -343,19 +342,17 @@ rule end_motifs:
         if params.kmer_length is not None:
             command_parts.append(f"-k {params.kmer_length}")
         if params.min_len is not None:
-            command_parts.append(f"-min {params.min_len}")
+            command_parts.append(f"--min-length {params.min_len}")
         if params.max_len is not None:
-            command_parts.append(f"-max {params.max_len}")
+            command_parts.append(f"--max-length {params.max_len}")
 
-        if params.single_strand:
-            command_parts.append("-B")
-            if params.negative_strand:
-                command_parts.append("-n")
+        if params.strand is not None and params.strand != "both":
+            command_parts.append(f"--strand {params.strand}")
 
         if params.mapq is not None:
             command_parts.append(f"-q {params.mapq}")
-        if params.workers is not None:
-            command_parts.append(f"-w {params.workers}")
+        if params.threads is not None:
+            command_parts.append(f"-t {params.threads}")
         command_parts.append(f"-o {output} -v")
 
         command = " ".join(command_parts)
@@ -369,15 +366,14 @@ rule interval_end_motifs:
         intervals = os.path.join(sup_dir, f"{config.get('interval_file')}.filtered")
     output:
         os.path.join(interval_end_motifs_dir, "{sample}.interval_end_motifs.tsv")
-    threads: config.get("interval_end_motifs_workers")
+    threads: config.get("interval_end_motifs_threads")
     params:
         kmer_length = config.get("interval_end_motifs_kmer_length"),
-        min_len = config.get("interval_end_motifs_min_len"),
-        max_len = config.get("interval_end_motifs_max_len"),
-        single_strand = config.get("interval_end_motifs_single_strand", False),
-        negative_strand = config.get("interval_end_motifs_negative_strand", False),
+        min_len = config.get("interval_end_motifs_min_length"),
+        max_len = config.get("interval_end_motifs_max_length"),
+        strand = config.get("interval_end_motifs_strand"),
         mapq = config.get("interval_end_motifs_mapq"),
-        workers = config.get("interval_end_motifs_workers")
+        threads = config.get("interval_end_motifs_threads")
     run:
         command_parts = [
             "finaletoolkit",
@@ -390,19 +386,17 @@ rule interval_end_motifs:
         if params.kmer_length is not None:
             command_parts.append(f"-k {params.kmer_length}")
         if params.min_len is not None:
-            command_parts.append(f"-min {params.min_len}")
+            command_parts.append(f"--min-length {params.min_len}")
         if params.max_len is not None:
-            command_parts.append(f"-max {params.max_len}")
+            command_parts.append(f"--max-length {params.max_len}")
 
-        if params.single_strand:
-            command_parts.append("-B")
-            if params.negative_strand:
-                command_parts.append("-n")
+        if params.strand is not None and params.strand != "both":
+            command_parts.append(f"--strand {params.strand}")
 
         if params.mapq is not None:
             command_parts.append(f"-q {params.mapq}")
-        if params.workers is not None:
-            command_parts.append(f"-w {params.workers}")
+        if params.threads is not None:
+            command_parts.append(f"-t {params.threads}")
         command_parts.append(f"-o {output[0]} -v")
 
         command = " ".join(command_parts)
@@ -428,23 +422,23 @@ rule mds:
         if params.header is not None:
             command_parts.append(f"--header {params.header}")
 
-        # Redirect output to the file
-        command = " ".join(command_parts) + f" {output[0]}"
+        # mds writes to stdout in FinaleToolkit 1.0.0; redirect it to the output file
+        command = " ".join(command_parts) + f" > {output[0]}"
         print("Running: ", command)
         shell(f"{command}")
 
-rule interval_mds:
+rule regional_mds:
     input:
         os.path.join(interval_end_motifs_dir, "{sample}.interval_end_motifs.tsv")
     output:
-        os.path.join(interval_mds_dir, "{sample}.interval_mds.tsv")
+        os.path.join(regional_mds_dir, "{sample}.regional_mds.tsv")
     params:
-        sep = config.get("interval_mds_sep", " "),
-        header = config.get("interval_mds_header")
+        sep = config.get("regional_mds_sep", " "),
+        header = config.get("regional_mds_header")
     run:
         command_parts = [
             "finaletoolkit",
-            "interval-mds",
+            "regional-mds",
             input[0],  # Accessing the input file properly
         ]
         if params.sep is not None and params.sep != " ":
@@ -463,34 +457,34 @@ rule wps:
         site_bed = os.path.join(sup_dir, f"{config.get('wps_site_bed')}")
     output:
         os.path.join(wps_dir, "{sample}.wps.bw")
-    threads: config.get("wps_workers")
+    threads: config.get("wps_threads")
     params:
         chrom_sizes = config.get("wps_chrom_sizes"),
         interval_size = config.get("wps_interval_size"),
         window_size = config.get("wps_window_size"),
-        min_len = config.get("wps_min_len"),
-        max_len = config.get("wps_max_len"),
+        min_len = config.get("wps_min_length"),
+        max_len = config.get("wps_max_length"),
         mapq = config.get("wps_mapq"),
-        workers = config.get("wps_workers"),
+        threads = config.get("wps_threads"),
         reference_file = config.get("wps_reference_file")
     run:
         command_parts = ["finaletoolkit", "wps", input.data, input.site_bed]
         if params.reference_file is not None:
             command_parts.append(f"-r {os.path.join(sup_dir, params.reference_file)}")
         if params.chrom_sizes is not None:
-            command_parts.append(f"-c {os.path.join(sup_dir, params.chrom_sizes)}")
+            command_parts.append(f"--chrom-sizes {os.path.join(sup_dir, params.chrom_sizes)}")
         if params.interval_size is not None:
             command_parts.append(f"-i {params.interval_size}")
         if params.window_size is not None:
             command_parts.append(f"-W {params.window_size}")
         if params.min_len is not None:
-            command_parts.append(f"-min {params.min_len}")
+            command_parts.append(f"--min-length {params.min_len}")
         if params.max_len is not None:
-            command_parts.append(f"-max {params.max_len}")
+            command_parts.append(f"--max-length {params.max_len}")
         if params.mapq is not None:
             command_parts.append(f"-q {params.mapq}")
-        if params.workers is not None:
-            command_parts.append(f"-w {params.workers}")
+        if params.threads is not None:
+            command_parts.append(f"-t {params.threads}")
         command_parts.append(f"-o {output[0]} -v")
         command = " ".join(command_parts)
         print("Running: ", command)
@@ -503,14 +497,14 @@ rule adjust_wps:
         chrom_sizes = os.path.join(sup_dir, f"{config.get('adjust_wps_chrom_sizes')}")
     output:
         os.path.join(adjust_wps_dir, "{sample}.adjust_wps.bw")
-    threads: config.get("adjust_wps_workers")
+    threads: config.get("adjust_wps_threads")
     params:
         interval_size = config.get("adjust_wps_interval_size"),
         median_window_size = config.get("adjust_wps_median_window_size"),
         savgol_window_size = config.get("adjust_wps_savgol_window_size"),
         savgol_poly_deg = config.get("adjust_wps_savgol_poly_deg"),
-        exclude_savgol = config.get("adjust_wps_exclude_savgol", False),
-        workers = config.get("adjust_wps_workers"),
+        savgol = config.get("adjust_wps_savgol", True),
+        threads = config.get("adjust_wps_threads"),
         mean = config.get("adjust_wps_mean", False),
         subtract_edges = config.get("adjust_wps_subtract_edges", False),
         edge_size = config.get("adjust_wps_edge_size")
@@ -528,13 +522,13 @@ rule adjust_wps:
         if params.median_window_size is not None:
             command_parts.append(f"-m {params.median_window_size}")
         if params.savgol_window_size is not None:
-            command_parts.append(f"-s {params.savgol_window_size}")
+            command_parts.append(f"--savgol-window-size {params.savgol_window_size}")
         if params.savgol_poly_deg is not None:
-            command_parts.append(f"-p {params.savgol_poly_deg}")
-        if params.exclude_savgol:
-            command_parts.append("-S")
-        if params.workers is not None:
-            command_parts.append(f"-w {params.workers}")
+            command_parts.append(f"--savgol-poly-deg {params.savgol_poly_deg}")
+        if not params.savgol:
+            command_parts.append("--no-savgol")
+        if params.threads is not None:
+            command_parts.append(f"-t {params.threads}")
         if params.mean:
             command_parts.append("--mean")
         if params.subtract_edges:
@@ -554,17 +548,17 @@ rule delfi:
         bins_file = os.path.join(sup_dir, f"{config.get('delfi_bins_file')}")
     output:
         os.path.join(delfi_dir, "{sample}.delfi.bed")
-    threads: config.get("delfi_workers")
+    threads: config.get("delfi_threads")
     params:
         blacklist_file = config.get("delfi_blacklist_file"),
         gap_file = config.get("delfi_gap_file"),
         gap_reference_genome = config.get("delfi_gap_reference_genome"),
         no_gc_correct = config.get("delfi_no_gc_correct", False),
-        keep_nocov = config.get("delfi_keep_nocov", False),
-        no_merge_bins = config.get("delfi_no_merge_bins", False),
-        window_size = config.get("delfi_window_size"),
+        remove_nocov = config.get("delfi_remove_nocov", True),
+        merge_bins = config.get("delfi_merge_bins", True),
+        merge_size = config.get("delfi_merge_size"),
         mapq = config.get("delfi_mapq"),
-        workers = config.get("delfi_workers")
+        threads = config.get("delfi_threads")
     run:
 
         command_parts = [
@@ -587,17 +581,17 @@ rule delfi:
             command_parts.append(f"-g {os.path.join(sup_dir, params.gap_file)}")
 
         if params.no_gc_correct:
-            command_parts.append("-G")
-        if params.keep_nocov:
-            command_parts.append("-R")
-        if params.no_merge_bins:
-            command_parts.append("-M")
-        if params.window_size is not None:
-            command_parts.append(f"-s {params.window_size}")
+            command_parts.append("--no-gc-correct")
+        if not params.remove_nocov:
+            command_parts.append("--no-remove-nocov")
+        if not params.merge_bins:
+            command_parts.append("--no-merge-bins")
+        if params.merge_size is not None:
+            command_parts.append(f"--merge-size {params.merge_size}")
         if params.mapq is not None:
             command_parts.append(f"-q {params.mapq}")
-        if params.workers is not None:
-            command_parts.append(f"-w {params.workers}")
+        if params.threads is not None:
+            command_parts.append(f"-t {params.threads}")
 
         command_parts.append(f"-o {output[0]} -v")
 
@@ -612,14 +606,14 @@ rule cleavage_profile:
         chrom_sizes = os.path.join(sup_dir, f"{config.get('cleavage_profile_chrom_sizes')}")
     output:
         os.path.join(cleavage_profile_dir, "{sample}.cleavage_profile.bw")
-    threads: config.get("cleavage_profile_workers")
+    threads: config.get("cleavage_profile_threads")
     params:
-        min_len = config.get("cleavage_profile_min_len"),
-        max_len = config.get("cleavage_profile_max_len"),
+        min_len = config.get("cleavage_profile_min_length"),
+        max_len = config.get("cleavage_profile_max_length"),
         mapq = config.get("cleavage_profile_mapq"),
-        left = config.get("cleavage_profile_left"),
-        right = config.get("cleavage_profile_right"),
-        workers = config.get("cleavage_profile_workers"),
+        pad_left = config.get("cleavage_profile_pad_left"),
+        pad_right = config.get("cleavage_profile_pad_right"),
+        threads = config.get("cleavage_profile_threads"),
         reference_file = config.get("cleavage_profile_reference_file")
     run:
         command_parts = [
@@ -631,19 +625,19 @@ rule cleavage_profile:
         ]
 
         if params.reference_file is not None:
-            command_parts.append(f"--reference-file {os.path.join(sup_dir, params.reference_file)}")
+            command_parts.append(f"--reference {os.path.join(sup_dir, params.reference_file)}")
         if params.min_len is not None:
-            command_parts.append(f"-min {params.min_len}")
+            command_parts.append(f"--min-length {params.min_len}")
         if params.max_len is not None:
-            command_parts.append(f"-max {params.max_len}")
+            command_parts.append(f"--max-length {params.max_len}")
         if params.mapq is not None:
             command_parts.append(f"-q {params.mapq}")
-        if params.left is not None:
-            command_parts.append(f"-l {params.left}")
-        if params.right is not None:
-            command_parts.append(f"-r {params.right}")
-        if params.workers is not None:
-            command_parts.append(f"-w {params.workers}")
+        if params.pad_left is not None:
+            command_parts.append(f"--pad-left {params.pad_left}")
+        if params.pad_right is not None:
+            command_parts.append(f"--pad-right {params.pad_right}")
+        if params.threads is not None:
+            command_parts.append(f"-t {params.threads}")
 
         command_parts.append(f"-o {output[0]} -v")
         command = " ".join(command_parts)
@@ -671,7 +665,7 @@ rule agg_bw:
         if params.median_window_size is not None:
             command_parts.append(f"-m {params.median_window_size}")
         if params.mean:
-            command_parts.append("-a")
+            command_parts.append("--mean")
 
         command_parts.append(f"-o {output[0]}")
         command_parts.append("-v")
@@ -686,15 +680,14 @@ rule breakpoint_motifs:
         refseq = os.path.join(sup_dir, f"{config.get('breakpoint_motifs_refseq_file')}")
     output:
         os.path.join(breakpoint_motifs_dir, "{sample}.breakpoint_motifs.tsv")
-    threads: config.get("breakpoint_motifs_workers")
+    threads: config.get("breakpoint_motifs_threads")
     params:
         kmer_length = config.get("breakpoint_motifs_kmer_length"),
-        min_len = config.get("breakpoint_motifs_min_len"),
-        max_len = config.get("breakpoint_motifs_max_len"),
-        single_strand = config.get("breakpoint_motifs_single_strand", False),
-        negative_strand = config.get("breakpoint_motifs_negative_strand", False),
+        min_len = config.get("breakpoint_motifs_min_length"),
+        max_len = config.get("breakpoint_motifs_max_length"),
+        strand = config.get("breakpoint_motifs_strand"),
         mapq = config.get("breakpoint_motifs_mapq"),
-        workers = config.get("breakpoint_motifs_workers")
+        threads = config.get("breakpoint_motifs_threads")
     run:
         command_parts = [
             "finaletoolkit",
@@ -706,19 +699,17 @@ rule breakpoint_motifs:
         if params.kmer_length is not None:
             command_parts.append(f"-k {params.kmer_length}")
         if params.min_len is not None:
-            command_parts.append(f"-min {params.min_len}")
+            command_parts.append(f"--min-length {params.min_len}")
         if params.max_len is not None:
-            command_parts.append(f"-max {params.max_len}")
+            command_parts.append(f"--max-length {params.max_len}")
 
-        if params.single_strand:
-            command_parts.append("-B")
-            if params.negative_strand:
-                command_parts.append("-n")
+        if params.strand is not None and params.strand != "both":
+            command_parts.append(f"--strand {params.strand}")
 
         if params.mapq is not None:
             command_parts.append(f"-q {params.mapq}")
-        if params.workers is not None:
-            command_parts.append(f"-w {params.workers}")
+        if params.threads is not None:
+            command_parts.append(f"-t {params.threads}")
         command_parts.append(f"-o {output} -v")
 
         command = " ".join(command_parts)
@@ -732,15 +723,14 @@ rule interval_breakpoint_motifs:
         intervals = os.path.join(sup_dir, f"{config.get('interval_file')}.filtered")
     output:
         os.path.join(interval_breakpoint_motifs_dir, "{sample}.interval_breakpoint_motifs.tsv")
-    threads: config.get("interval_breakpoint_motifs_workers")
+    threads: config.get("interval_breakpoint_motifs_threads")
     params:
         kmer_length = config.get("interval_breakpoint_motifs_kmer_length"),
-        min_len = config.get("interval_breakpoint_motifs_min_len"),
-        max_len = config.get("interval_breakpoint_motifs_max_len"),
-        single_strand = config.get("interval_breakpoint_motifs_single_strand", False),
-        negative_strand = config.get("interval_breakpoint_motifs_negative_strand", False),
+        min_len = config.get("interval_breakpoint_motifs_min_length"),
+        max_len = config.get("interval_breakpoint_motifs_max_length"),
+        strand = config.get("interval_breakpoint_motifs_strand"),
         mapq = config.get("interval_breakpoint_motifs_mapq"),
-        workers = config.get("interval_breakpoint_motifs_workers")
+        threads = config.get("interval_breakpoint_motifs_threads")
     run:
         command_parts = [
             "finaletoolkit",
@@ -753,19 +743,17 @@ rule interval_breakpoint_motifs:
         if params.kmer_length is not None:
             command_parts.append(f"-k {params.kmer_length}")
         if params.min_len is not None:
-            command_parts.append(f"-min {params.min_len}")
+            command_parts.append(f"--min-length {params.min_len}")
         if params.max_len is not None:
-            command_parts.append(f"-max {params.max_len}")
+            command_parts.append(f"--max-length {params.max_len}")
 
-        if params.single_strand:
-            command_parts.append("-B")
-            if params.negative_strand:
-                command_parts.append("-n")
+        if params.strand is not None and params.strand != "both":
+            command_parts.append(f"--strand {params.strand}")
 
         if params.mapq is not None:
             command_parts.append(f"-q {params.mapq}")
-        if params.workers is not None:
-            command_parts.append(f"-w {params.workers}")
+        if params.threads is not None:
+            command_parts.append(f"-t {params.threads}")
         command_parts.append(f"-o {output[0]} -v")
 
         command = " ".join(command_parts)
