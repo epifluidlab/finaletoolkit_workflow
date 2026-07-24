@@ -94,6 +94,20 @@ elif file_format == "cram":
 elif file_format == "bed.gz" or file_format == "frag.gz":
     index = "tbi"
 
+if (config.get("filter_file_whitelist") or config.get("filter_file_blacklist")) and not filter_file:
+    raise SystemExit("filter_file must be True to use filter_file_whitelist or filter_file_blacklist.")
+
+# Most FinaleToolkit commands already filter by MAPQ, fragment length, and
+# intersect-policy internally, so filter_file's BAM/BED-level pass (whose
+# main added value is whitelist/blacklist filtering) is only worth running
+# when explicitly requested. When it's off, downstream rules read straight
+# from in_dir instead of paying to copy the whole file into filter_file_dir
+# unchanged.
+if filter_file:
+    FILTERED_DATA = os.path.join(filter_file_dir, "{sample}.filtered.") + file_format
+else:
+    FILTERED_DATA = os.path.join(in_dir, "{sample}.") + file_format
+
 using_finaletoolkit = frag_length_bins or frag_length_intervals or coverage or end_motifs or interval_end_motifs or mds or regional_mds or wps or adjust_wps or delfi or cleavage_profile or agg_bw or breakpoint_motifs or interval_breakpoint_motifs
 
 # Set the expand function for the files.
@@ -111,14 +125,18 @@ sample_files = {
 #Define all expected outputs and files.
 rule all:
     input:
-        # Output files for the filter-file.
-        io(["filtered.bed.gz","filtered.bed.gz.tbi"], sample_files['bed.gz'], file_format == "bed.gz", filter_file_dir),
-        io(["filtered.frag.gz","filtered.frag.gz.tbi"], sample_files['frag.gz'], file_format == "frag.gz", filter_file_dir),
-        io(["filtered.bam","filtered.bam.bai"], sample_files['bam'], file_format == "bam", filter_file_dir),
-        io(["filtered.cram","filtered.cram.crai"], sample_files['cram'], file_format == "cram", filter_file_dir),
+        # Output files for the filter-file. Only requested when filter_file
+        # is enabled; otherwise downstream rules read directly from in_dir
+        # and this copy is never produced.
+        io(["filtered.bed.gz","filtered.bed.gz.tbi"], sample_files['bed.gz'], filter_file and file_format == "bed.gz", filter_file_dir),
+        io(["filtered.frag.gz","filtered.frag.gz.tbi"], sample_files['frag.gz'], filter_file and file_format == "frag.gz", filter_file_dir),
+        io(["filtered.bam","filtered.bam.bai"], sample_files['bam'], filter_file and file_format == "bam", filter_file_dir),
+        io(["filtered.cram","filtered.cram.crai"], sample_files['cram'], filter_file and file_format == "cram", filter_file_dir),
 
-        # Relevant output file if filtering out the mappability file.
-        io(["filtered"], [config.get('interval_file', "")], exists('interval_file'), sup_dir),
+        # Relevant output file if filtering out the mappability file. Must
+        # match FILTERED_INTERVAL exactly (not io()'s append-style naming,
+        # which would ask for a file no rule produces).
+        [FILTERED_INTERVAL] if exists('interval_file') else [],
 
         # Relevant FinaleToolkit function output files.
         *[
@@ -157,16 +175,15 @@ rule filter_file:
         filter_file_intersect_policy = config.get("filter_file_intersect_policy", "midpoint"),
         filter_file_workers = config.get("workers", 1)
     run:
-        if filter_file:
-            command = f"""finaletoolkit filter-file \
-                {f" -w {params.filter_file_whitelist}" if params.filter_file_whitelist else ""} \
-                {f" -b {params.filter_file_blacklist}" if params.filter_file_blacklist else ""} \
-                -o {output.main} -q {params.filter_file_mapq} --min-length {params.filter_file_min_length} --max-length {params.filter_file_max_length} \
-                -p {params.filter_file_intersect_policy} -t {params.filter_file_workers} {input.main}"""
-            shell(command)
-        else:
-            shell(f"cp {input.main} {output.main}")
-            shell(f"cp {input.index} {output.index}")
+        # This rule is only ever requested (via rule all or as an input to
+        # another rule) when filter_file is True, so no need to fall back
+        # to a plain copy here.
+        command = f"""finaletoolkit filter-file \
+            {f" -w {params.filter_file_whitelist}" if params.filter_file_whitelist else ""} \
+            {f" -b {params.filter_file_blacklist}" if params.filter_file_blacklist else ""} \
+            -o {output.main} -q {params.filter_file_mapq} --min-length {params.filter_file_min_length} --max-length {params.filter_file_max_length} \
+            -p {params.filter_file_intersect_policy} -t {params.filter_file_workers} {input.main}"""
+        shell(command)
 
 rule filter_interval_file:
     input:
@@ -183,7 +200,7 @@ rule filter_interval_file:
 # STEP 4: Regular Finaletoolkit commands.
 rule frag_length_bins:
     input:
-        os.path.join(filter_file_dir, "{sample}.filtered.") + file_format
+        FILTERED_DATA
     output:
         tsv=os.path.join(frag_length_bins_dir, "{sample}.frag_length_bins.tsv"),
         png=os.path.join(frag_length_bins_dir, "{sample}.frag_length_bins.png")
@@ -232,7 +249,7 @@ rule frag_length_bins:
 
 rule frag_length_intervals:
     input:
-        data = os.path.join(filter_file_dir, "{sample}.filtered.") + file_format,
+        data = FILTERED_DATA,
         intervals = FILTERED_INTERVAL
     output:
         os.path.join(frag_length_intervals_dir, "{sample}.frag_length_intervals.bed")
@@ -277,7 +294,7 @@ rule frag_length_intervals:
 
 rule coverage:
     input:
-        data= os.path.join(filter_file_dir, "{sample}.filtered.") + file_format,
+        data= FILTERED_DATA,
         intervals = FILTERED_INTERVAL
     output:
         os.path.join(coverage_dir, "{sample}.coverage.bed")
@@ -328,7 +345,7 @@ rule coverage:
 
 rule end_motifs:
     input:
-        data = os.path.join(filter_file_dir, "{sample}.filtered.") + file_format,
+        data = FILTERED_DATA,
         refseq = os.path.join(sup_dir, f"{config.get('end_motifs_refseq_file')}")
     output:
         os.path.join(end_motifs_dir, "{sample}.end_motifs.tsv")
@@ -370,7 +387,7 @@ rule end_motifs:
 
 rule interval_end_motifs:
     input:
-        data = os.path.join(filter_file_dir, "{sample}.filtered.") + file_format,
+        data = FILTERED_DATA,
         refseq = os.path.join(sup_dir, f"{config.get('interval_end_motifs_refseq_file')}"),
         intervals = FILTERED_INTERVAL
     output:
@@ -445,7 +462,8 @@ rule regional_mds:
         os.path.join(regional_mds_dir, "{sample}.regional_mds.tsv")
     params:
         sep = config.get("regional_mds_sep", " "),
-        header = config.get("regional_mds_header")
+        header = config.get("regional_mds_header"),
+        miller_madow = config.get("regional_mds_miller_madow", False)
     run:
         command_parts = [
             "finaletoolkit",
@@ -455,6 +473,8 @@ rule regional_mds:
             command_parts.append(f"-s {params.sep}")
         if params.header is not None:
             command_parts.append(f"--header {params.header}")
+        if params.miller_madow:
+            command_parts.append("--miller-madow")
 
         command_parts.append(input[0])
         command_parts.append(output[0])
@@ -466,7 +486,7 @@ rule regional_mds:
 
 rule wps:
     input:
-        data = os.path.join(filter_file_dir, "{sample}.filtered.") + file_format,
+        data = FILTERED_DATA,
         site_bed = os.path.join(sup_dir, f"{config.get('wps_site_bed')}")
     output:
         os.path.join(wps_dir, "{sample}.wps.bw")
@@ -559,7 +579,7 @@ rule adjust_wps:
 
 rule delfi:
     input:
-        input_file = os.path.join(filter_file_dir, "{sample}.filtered.") + file_format,
+        input_file = FILTERED_DATA,
         chrom_sizes = os.path.join(sup_dir, f"{config.get('delfi_chrom_sizes')}"),
         reference_file = os.path.join(sup_dir, f"{config.get('delfi_reference_file')}"),
         bins_file = os.path.join(sup_dir, f"{config.get('delfi_bins_file')}")
@@ -621,7 +641,7 @@ rule delfi:
 
 rule cleavage_profile:
     input:
-        data = os.path.join(filter_file_dir, "{sample}.filtered.") + file_format,
+        data = FILTERED_DATA,
         intervals = FILTERED_INTERVAL,
         chrom_sizes = os.path.join(sup_dir, f"{config.get('cleavage_profile_chrom_sizes')}")
     output:
@@ -696,7 +716,7 @@ rule agg_bw:
 
 rule breakpoint_motifs:
     input:
-        data = os.path.join(filter_file_dir, "{sample}.filtered.") + file_format,
+        data = FILTERED_DATA,
         refseq = os.path.join(sup_dir, f"{config.get('breakpoint_motifs_refseq_file')}")
     output:
         os.path.join(breakpoint_motifs_dir, "{sample}.breakpoint_motifs.tsv")
@@ -738,7 +758,7 @@ rule breakpoint_motifs:
 
 rule interval_breakpoint_motifs:
     input:
-        data = os.path.join(filter_file_dir, "{sample}.filtered.") + file_format,
+        data = FILTERED_DATA,
         refseq = os.path.join(sup_dir, f"{config.get('interval_breakpoint_motifs_refseq_file')}"),
         intervals = FILTERED_INTERVAL
     output:
