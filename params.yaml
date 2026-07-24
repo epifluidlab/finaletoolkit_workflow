@@ -17,7 +17,13 @@
 # mappability_file: "mappability.bw"
 # mappability_threshold: 0.00
 
-# --- filter-file ------------------------------------------------------------
+# --- filter-file --------------------------------------------------------------
+# Most FinaleToolkit commands already filter by MAPQ, fragment length, and
+# intersect-policy internally via their own options below, so filter-file's
+# main remaining value is whitelist/blacklist region filtering. filter_file
+# defaults to False, in which case it is skipped entirely and every command
+# reads directly from input_dir. Set filter_file: True to enable it (required
+# if you set filter_file_whitelist or filter_file_blacklist).
 # filter_file: True
 # filter_file_whitelist: "whitelist.bed"   # -w/--whitelist
 # filter_file_blacklist: "blacklist.bed"   # -b/--blacklist
@@ -110,6 +116,7 @@
 # regional_mds: True
 # regional_mds_sep: " "                     # -s/--sep
 # regional_mds_header: 0                    # --header
+# regional_mds_miller_madow: True           # --miller-madow (bias correction for low-depth regions; off by default)
 
 # --- wps --------------------------------------------------------------------
 # wps: True

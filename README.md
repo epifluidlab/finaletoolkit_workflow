@@ -125,7 +125,9 @@ Blacklist, BEDbase) by `setup_reference.sh`.
 * **Commands:** enable a FinaleToolkit command with underscores instead of hyphens (e.g. `adjust-wps`
   → `adjust_wps: True`); set flags by appending `_<flag>` (e.g. `coverage_mapq: 30`). The workflow
   respects command dependencies (e.g. `mds` needs `end_motifs`, `regional_mds` needs
-  `interval_end_motifs`). The per-region motif-diversity step is `regional_mds`. See
+  `interval_end_motifs`). The per-region motif-diversity step is `regional_mds`, which also supports
+  `regional_mds_miller_madow: True` to apply the Miller-Madow bias correction (counteracts the downward
+  bias of the plug-in entropy estimator in low-depth regions; off by default). See
   [`params.yaml`](./params.yaml) for the fully annotated list of every option.
 
 ### Output file naming
@@ -133,6 +135,14 @@ Blacklist, BEDbase) by `setup_reference.sh`.
 * **Filtered files** get `.filtered` before the format (e.g. `file.filtered.bed.gz`).
 * **Command outputs** insert the command name (e.g. `file.frag_length_intervals.bed`).
 * Each input is processed for every enabled command.
+
+### `filter-file`
+
+Most FinaleToolkit commands already filter by MAPQ, fragment length, and intersect-policy internally,
+so `filter-file`'s main remaining value is whitelist/blacklist region filtering. `filter_file` defaults
+to `False`, in which case it's skipped entirely — every command reads directly from `input_dir` instead
+of first copying each input file unchanged into `output/filter_file/`. Set `filter_file: True` to enable
+it (required if you set `filter_file_whitelist` or `filter_file_blacklist`).
 
 ### Citation
 Li JW, Bandaru R, Baliga K, Liu Y (2025). *FinaleToolkit: accelerating cell-free DNA fragmentation
