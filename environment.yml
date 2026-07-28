@@ -2,11 +2,10 @@ name: finaletoolkit_workflow
 channels:
   - conda-forge
   - bioconda
-  - bioconda/label/cf201901
   - defaults
 dependencies:
   - python=3.11
-  - bioconda/label/cf201901::bedtools=2.26.0
+  - bioconda::bedtools=2.26.0
   - htslib=1.21
   - samtools=1.21
   - openjdk=21
