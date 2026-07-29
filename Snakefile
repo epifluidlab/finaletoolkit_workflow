@@ -118,7 +118,7 @@ rule all:
         io(["filtered.cram","filtered.cram.crai"], sample_files['cram'], file_format == "cram", filter_file_dir),
 
         # Relevant output file if filtering out the mappability file.
-        io(["filtered"], [config.get('interval_file', "")], exists('interval_file'), sup_dir),
+        io(["filtered.bed"], [os.path.splitext(_interval_base)[0]], exists('interval_file'), sup_dir),
 
         # Relevant FinaleToolkit function output files.
         *[
